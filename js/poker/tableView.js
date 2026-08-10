@@ -158,7 +158,7 @@ export class TableView{
     chip.style.left=(r.left-sr.left+r.width/2)+'px';chip.style.top=(r.top-sr.top+r.height/2)+'px';
     layer.appendChild(chip);
     requestAnimationFrame(()=>{chip.style.transform='translate(-50%,-50%) scale(.8)';chip.style.opacity='.25'});
-    setTimeout(()=>chip.remove(),260);
+    setTimeout(()=>chip.remove(),520);
   }
 
   async collectBets(){
@@ -173,7 +173,7 @@ export class TableView{
       stage.appendChild(g);ghosts.push(g);
       requestAnimationFrame(()=>g.style.transform=`translate(${pr.left-r.left}px,${pr.top-r.top}px) scale(.65)`);
     });
-    await new Promise(r=>setTimeout(r,280));
+    await new Promise(r=>setTimeout(r,720));
     ghosts.forEach(g=>g.remove());
     this.seats.forEach(seat=>{seat.bet.classList.remove('show');seat.bet.innerHTML=''});
     if(this.lastSnapshot){
@@ -252,14 +252,14 @@ export class TableView{
     const banner=this.root.querySelector('#v1Banner');
     banner.innerHTML=`<b>${e.winners.join(', ')}</b><span>+${money(e.amount)}</span>`;
     banner.classList.add('show','win');
-    setTimeout(()=>banner.classList.remove('show'),1200);
+    setTimeout(()=>banner.classList.remove('show'),2600);
   }
 
   showHandResult(summary){
     const banner=this.root.querySelector('#v1Banner');
     banner.innerHTML=`<b>${summary.winners.includes(this.heroNick)?'БАНК ТВОЙ':'РУКА ЗАВЕРШЕНА'}</b><span>${summary.winners.join(', ')}</span>`;
     banner.classList.add('show');
-    setTimeout(()=>banner.classList.remove('show'),1000);
+    setTimeout(()=>banner.classList.remove('show'),2800);
   }
 
   showWaiting(text='Ждём действия'){

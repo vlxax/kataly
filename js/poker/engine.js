@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=102';
-import { PokerEventBus } from './eventBus.js?v=102';
+import { createDeck, shuffle } from './deck.js?v=130';
+import { PokerEventBus } from './eventBus.js?v=130';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -259,39 +259,39 @@ export class HoldemDemo {
         const card=this.deck.pop();p.hole.push(card);
         this.event('CARD_DEALT',{seat:p.seat,nick:p.nick,round,card:p.nick===this.heroNick?card:'XX'});
         this.emit();
-        await sleep(90);
+        await sleep(360);
         cursor=this.nextLive(cursor);
       }
     }
 
     this.phase='action';this.emit();
-    await sleep(320);
+    await sleep(900);
     const preflopStart=live.length===2?sbIndex:this.nextLive(bbIndex);
     await this.bettingRound(preflopStart);
 
     if(this.liveInHand().length>1){
       this.street='flop';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'flop'});
-      this.dealBoard(3);this.emit();await sleep(420);
+      this.dealBoard(3);this.emit();await sleep(1100);
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
       this.street='turn';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'turn'});
-      this.dealBoard(1);this.emit();await sleep(360);
+      this.dealBoard(1);this.emit();await sleep(950);
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
       this.street='river';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'river'});
-      this.dealBoard(1);this.emit();await sleep(360);
+      this.dealBoard(1);this.emit();await sleep(950);
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
 
-    this.phase='showdown';this.event('SHOWDOWN_STARTED',{});this.emit();await sleep(350);
+    this.phase='showdown';this.event('SHOWDOWN_STARTED',{});this.emit();await sleep(1200);
     this.finishHand();
 
     if(!this.finished)this.button=this.nextLive(this.button);
@@ -399,7 +399,7 @@ export class HoldemDemo {
   }
 
   async botAction(player,legal){
-    await sleep(this.botDelayMs+Math.random()*this.botDelayMs*.55);
+    await sleep(900 + Math.floor(Math.random()*1400));
     let power=this.preflopStrength(player.hole);
     if(this.street!=='preflop' && this.board.length>=3){
       const rank=evaluate7(player.hole.concat(this.board));

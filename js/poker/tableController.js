@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js?v=102';
-import { TableView } from './tableView.js?v=102';
+import { HoldemDemo } from './engine.js?v=130';
+import { TableView } from './tableView.js?v=130';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -34,9 +34,12 @@ export class TableController{
     on('PLAYER_RAISED',e=>this.view.showPlayerAction('PLAYER_RAISED',e));
     on('PLAYER_ALLIN',e=>this.view.showPlayerAction('PLAYER_ALLIN',e));
     on('BETTING_ROUND_COMPLETE',async()=>{this.view.showWaiting('Собираем ставки…');await this.view.collectBets()});
-    on('STREET_STARTED',e=>this.view.showWaiting(e.street.toUpperCase()));
+    on('STREET_STARTED',e=>{
+      const names={flop:'FLOP · открываем три карты',turn:'TURN · открываем карту',river:'RIVER · последняя карта'};
+      this.view.showWaiting(names[e.street]||e.street.toUpperCase());
+    });
     on('BOARD_CARD_DEALT',e=>this.view.dealBoardCard(e));
-    on('SHOWDOWN_STARTED',()=>this.view.showWaiting('SHOWDOWN'));
+    on('SHOWDOWN_STARTED',()=>this.view.showWaiting('SHOWDOWN · вскрываем карты…'));
     on('CARDS_REVEALED',e=>this.view.revealCards(e));
     on('POT_AWARDED',e=>this.view.showPotAward(e));
     on('HAND_FINISHED',e=>this.view.showHandResult(e.summary));
@@ -102,7 +105,7 @@ export class TableController{
     this.lastHand=hand;
     setTimeout(()=>{
       if(!this.cancelled&&!this.engine.finished&&!this.engine.running)this.engine.startHand();
-    },1400);
+    },3200);
   }
 
   onTournamentEnd(result){

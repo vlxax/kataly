@@ -662,3 +662,11 @@ button{cursor:pointer}
  .v1-room .v1-main-actions{gap:6px}
  .v1-room .v1-main-actions button{font-size:10px}
 }
+
+/* ===== V1.3 GAME FLOW PASS ===== */
+.v1-card{transition:transform .34s cubic-bezier(.2,.8,.2,1),opacity .28s ease!important}
+.v1-chip-flight,.v1-collect-chip{transition:transform .52s cubic-bezier(.2,.75,.2,1),opacity .45s ease!important}
+.v1-banner.show{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.v1-turn-status.hero{color:#fff;text-shadow:0 0 18px rgba(255,46,125,.42)}
+.v1-controls button:disabled{opacity:.32;filter:saturate(.3)}
+.v1-waiting{letter-spacing:.025em}
