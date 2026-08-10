@@ -269,3 +269,9 @@ PokerEngine → PokerEventBus → TableController → TableView
 - 18-second turn ring restored.
 - Hand history records potBefore, potAfter, decisionMs, playersInHand, effectiveStackBB.
 - Bots now use current made-hand rank postflop instead of only starting-hand strength.
+
+## V1.0.2 SAFARI FIX
+Critical fix: removed an extra closing brace at the end of `js/poker/tableView.js`.
+That brace made Safari reject the module with `Parser error` before the app could boot.
+All JS files were syntax-checked after the fix, and the full hand event test passes.
+Module URLs are cache-busted with `v=102` so Safari/GitHub Pages does not retain the broken module.

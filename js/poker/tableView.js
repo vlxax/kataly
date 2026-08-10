@@ -295,4 +295,3 @@ export class TableView{
     confirm.onclick=()=>onAction({type:'raise',amount:selected});
   }
 }
-}
