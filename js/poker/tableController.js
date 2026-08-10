@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js?v=230';
-import { TableView } from './tableView.js?v=230';
+import { HoldemDemo } from './engine.js?v=240';
+import { TableView } from './tableView.js?v=240';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -24,11 +24,18 @@ export class TableController{
 
   bindEvents(){
     const on=(type,fn)=>this.engine.on(type,fn);
-    on('HAND_STARTED',()=>{this.view.clearHand();this.view.showWaiting('Раздаём карты…')});
+    on('HAND_STARTED',()=>{this.view.clearHand();this.view.leaveHeroSpectator();this.view.showWaiting()});
     on('FORCED_BET',e=>this.view.postForcedBet(e));
     on('CARD_DEALT',e=>this.view.dealCard(e));
     on('TURN_STARTED',e=>{this.startTurnTimer(e);this.view.setTurn(e);if(e.nick!==this.heroNick)this.view.showWaiting();});
-    on('PLAYER_FOLDED',e=>this.view.showPlayerAction('PLAYER_FOLDED',e));
+    on('PLAYER_FOLDED',e=>{
+      if(e.nick===this.heroNick){
+        this.view.enterHeroSpectator();
+        this.view.showWaiting();
+      }else{
+        this.view.showPlayerAction('PLAYER_FOLDED',e);
+      }
+    });
     on('PLAYER_CHECKED',e=>this.view.showPlayerAction('PLAYER_CHECKED',e));
     on('PLAYER_CALLED',e=>this.view.showPlayerAction('PLAYER_CALLED',e));
     on('PLAYER_RAISED',e=>this.view.showPlayerAction('PLAYER_RAISED',e));

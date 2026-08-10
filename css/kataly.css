@@ -1087,3 +1087,72 @@ html,body{width:100%;min-height:100%;margin:0;background:#050608}
 .v1-room .v1-controls{left:5px;right:5px;bottom:calc(4px + env(safe-area-inset-bottom));height:58px!important;min-height:58px!important;padding:4px;border-radius:10px}
 .v1-room .v1-context{height:10px;line-height:10px;font-size:5.2px;margin:0 2px 3px}.v1-room .v1-main-actions{grid-template-columns:1fr 1fr 1.15fr;gap:4px}
 .v1-room .v1-main-actions button{height:37px;border-radius:8px;font-size:8.5px}.v1-room .v1-main-actions .fold{background:#221a1c!important;color:#e6dfe1!important}.v1-room .v1-main-actions .call{background:#1b1e22!important;color:#fff!important}.v1-room .v1-main-actions .raise{background:linear-gradient(180deg,#b31d4f,#831438)!important;color:#fff!important}.v1-room .v1-raise-drawer{bottom:61px}
+
+/* ===== V2.4 HERO COCKPIT + SPECTATOR MODE ===== */
+.v1-room .v1-hero-strip{
+  left:14px;
+  bottom:calc(66px + env(safe-area-inset-bottom));
+  width:144px;
+  height:128px;
+  overflow:visible;
+}
+.v1-room .v1-hero-cards{
+  position:absolute;
+  left:4px;
+  top:0;
+  min-width:102px;
+  min-height:66px;
+  display:flex;
+  align-items:flex-end;
+  gap:4px;
+  z-index:5;
+}
+.v1-room .v1-hero-cards .v1-card{
+  width:48px;
+  height:65px;
+  margin-right:0;
+  border-radius:7px;
+  box-shadow:0 5px 15px rgba(0,0,0,.56);
+}
+.v1-room .v1-hero-meta{
+  left:0;
+  top:74px;
+  width:126px;
+  min-height:46px;
+  padding:7px 8px 6px;
+  z-index:3;
+}
+.v1-room .v1-hero-meta strong{font-size:8px;line-height:1.05}
+.v1-room .v1-hero-position{margin-top:3px;font-size:6px!important}
+.v1-room .v1-hero-meta b{margin-top:2px;font-size:12px}
+
+/* Folding keeps Hero at the table as a spectator for the rest of the hand. */
+.v1-room .v1-hero-cards.folded-cards{
+  opacity:.22;
+  filter:grayscale(.82);
+  transform:translateY(4px) scale(.96);
+  transition:opacity .22s ease,filter .22s ease,transform .22s ease;
+}
+.v1-room .v1-hero-strip.spectating .v1-hero-meta{opacity:.78}
+.v1-room .v1-hero-strip.spectating + .v1-controls{display:none!important}
+
+/* Readability: game data larger, decorative microcopy smaller. */
+.v1-room .v1-playerbox{min-width:88px;padding:7px 7px 6px}
+.v1-room .v1-name{font-size:8px}
+.v1-room .v1-stack b{font-size:11px}
+.v1-room .v1-stack span{font-size:5.5px}
+.v1-room .v1-pos-badge{min-width:22px;height:22px;font-size:6.4px}
+.v1-room .v1-bet{min-width:46px;font-size:7.5px}
+.v1-room .v1-pot{min-width:104px;padding:7px 12px}
+.v1-room .v1-pot b{font-size:17px}
+.v1-room .v1-pot em{font-size:7.5px}
+.v1-room .v1-session-info{font-size:6px;opacity:.78}
+.v1-room .v1-session-info span{font-size:5.5px}
+
+@media (max-height:700px){
+  .v1-room .v1-hero-strip{
+    bottom:calc(61px + env(safe-area-inset-bottom));
+    transform:scale(.90);
+    transform-origin:left bottom;
+  }
+}

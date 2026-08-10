@@ -137,6 +137,7 @@ export class TableView{
   }
 
   clearHand(){
+    this.leaveHeroSpectator();
     this.board=[];
     this.root.querySelector('#v1Board').innerHTML='';
     this.root.querySelector('#v1HeroCards').innerHTML='';
@@ -277,6 +278,21 @@ export class TableView{
     const c=this.root.querySelector('#v1Controls');
     c.innerHTML='';
     c.classList.add('v1-controls-hidden');
+  }
+
+  enterHeroSpectator(){
+    const strip=this.root.querySelector('.v1-hero-strip');
+    const cards=this.root.querySelector('#v1HeroCards');
+    if(strip)strip.classList.add('spectating');
+    if(cards)cards.classList.add('folded-cards');
+    this.showWaiting();
+  }
+
+  leaveHeroSpectator(){
+    const strip=this.root.querySelector('.v1-hero-strip');
+    const cards=this.root.querySelector('#v1HeroCards');
+    if(strip)strip.classList.remove('spectating');
+    if(cards)cards.classList.remove('folded-cards');
   }
 
   renderHeroControls(legal,onAction,street='preflop'){

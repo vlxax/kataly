@@ -414,3 +414,9 @@ of `seat.el.querySelector`.
 - Added central hand/blinds/player session information.
 - Hero remains fixed at the bottom with large hole cards, position and stack.
 - Preflop bots now distinguish unopened pots, single open, 3bet+, defense and short-stack shove/fold.
+
+## V2.4 — HERO SPECTATOR
+- Hero cards are physically separated from the Hero plate; they cannot cover name/position/stack.
+- After Hero folds, the current hand continues normally. Hero remains a spectator for all remaining actions, streets, showdown and pot award.
+- No redundant bottom "FOLD" message: folded Hero cards simply dim and action controls disappear.
+- Opponent stack, position, bet and central pot readability increased.
