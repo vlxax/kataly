@@ -101,3 +101,14 @@
 - Side pots и сложные multi-way all-in пока не реализованы.
 - Боты пока эвристические, не GTO.
 - Реальный realtime multiplayer будет отдельным этапом.
+
+## V0.7 — POKER ENGINE CORE
+- Blind levels now advance by real time (5 min demo levels), not by hand count.
+- Big Blind Ante.
+- Chips + BB display, average stack and tournament clock in engine snapshot.
+- 6-max positions and rotating dealer button; heads-up BTN/SB handling.
+- Legal action context includes call, min/max raise, pot, BB values and position.
+- Raise presets + all-in in the table UI.
+- Side-pot construction and split-pot payouts.
+- Decision logs now store position, effective stack, BB, pot context and decision time.
+- Poker Brain can later consume the richer hand/action log without pretending current heuristic scores are GTO.

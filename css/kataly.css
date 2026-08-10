@@ -241,3 +241,4 @@ button{cursor:pointer}
 .tournament-summary span{display:block;font-size:7px;color:#817b84;letter-spacing:.08em}.tournament-summary b{display:block;font-size:13px;margin-top:5px}
 .freak-result{padding:14px;border-radius:16px;background:#efe8ec;color:#181216;font-weight:900;font-size:11px;line-height:1.35;text-align:left;margin:12px 0}
 .stats-hero{grid-template-columns:1fr 1fr}
+.game-seat em{font-style:normal;font-size:10px;color:#ff3b8d;margin-left:4px}.seat-stack b{color:#fff}.sizing-presets{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto}.sizing-presets button{border:1px solid #3b3b44;background:#18181d;color:#ddd;border-radius:10px;padding:7px 10px;font-weight:800}.sizing-presets button:active{transform:scale(.96);border-color:#ff2c83}.table-pot b{display:block}.dealer{box-shadow:0 0 14px rgba(255,44,131,.35)}

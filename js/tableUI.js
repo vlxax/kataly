@@ -7,7 +7,9 @@ function cardHTML(c, hidden=false){
   const r=c[0],s=c[1],red=s==='h'||s==='d';
   return `<div class="pcard ${red?'red':''}"><b>${r}</b><span>${suitSymbol[s]}</span></div>`;
 }
-function money(n){return Math.round(n*10)/10}
+function money(n){return Math.round(n).toLocaleString('ru-RU')}
+function bb(n){return (Math.round(n*10)/10).toFixed(n<10?1:0)}
+function clock(sec){const m=Math.floor(sec/60),s=sec%60;return `${m}:${String(s).padStart(2,'0')}`} 
 
 export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
   const root=document.createElement('div');root.className='game-screen';
@@ -16,17 +18,13 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
   let snapshot=null, resolveHero=null, lastHand=null, heroStart=0, tournamentResult=null, ending=false;
 
   const engine=new HoldemDemo({
-    players,heroNick,stackBB:lobby.stackBB||100,smallBlind:1,bigBlind:2,
-    blindSchedule:[
-      {sb:1,bb:2},{sb:2,bb:4},{sb:3,bb:6},{sb:5,bb:10},{sb:8,bb:16},{sb:12,bb:24},{sb:20,bb:40}
-    ],
-    handsPerLevel:3,
+    players,heroNick,stackBB:lobby.stackBB||100,smallBlind:50,bigBlind:100,levelSeconds:300,bigBlindAnte:true,
     onChange:s=>{snapshot=s;render()},
     onHeroDecision:(legal,resolve)=>{resolveHero=resolve;renderDecision(legal)},
     onHandEnd:hand=>{lastHand=hand;setTimeout(()=>{if(!ending)showHandResult()},300)},
     onTournamentEnd:r=>{tournamentResult=r;ending=true;setTimeout(showTournamentResult,380)}
   });
-  heroStart=engine.hero()?.stack||100;
+  heroStart=engine.hero()?.stack||10000;
 
   function seatPos(i,n){
     const maps={
@@ -39,21 +37,21 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
     if(!snapshot)return;
     root.innerHTML=`<div class="table-top">
       <button class="table-icon" id="leaveGame">×</button>
-      <div><b>КАТАЛЫ</b><span>HAND #${snapshot.handNo} · УРОВЕНЬ ${snapshot.level} · ${snapshot.activePlayers}/${snapshot.totalPlayers} В ИГРЕ</span></div>
-      <div class="table-pot">БЛАЙНДЫ ${snapshot.sb}/${snapshot.bb}<b>БАНК ${money(snapshot.pot)}</b></div>
+      <div><b>КАТАЛЫ</b><span>HAND #${snapshot.handNo} · LEVEL ${snapshot.level} · ⏱ ${clock(snapshot.levelRemaining)} · ${snapshot.activePlayers}/${snapshot.totalPlayers}</span></div>
+      <div class="table-pot">${money(snapshot.sb)} / ${money(snapshot.bb)} / ${money(snapshot.ante)} BBA<b>POT ${money(snapshot.pot)} · ${bb(snapshot.potBB)} BB</b></div>
     </div>
     <div class="felt-wrap">
       <div class="felt">
         <div class="board">${snapshot.board.map(c=>cardHTML(c)).join('')}</div>
-        <div class="pot-chip">${snapshot.street.toUpperCase()}<b>${money(snapshot.pot)}</b></div>
+        <div class="pot-chip">${snapshot.street.toUpperCase()}<b>${money(snapshot.pot)} · ${bb(snapshot.potBB)} BB</b></div>
       </div>
       ${snapshot.players.map((p,i)=>{
         const [x,y]=seatPos(i,snapshot.players.length);
         const hero=p.nick===heroNick;
         return `<div class="game-seat ${hero?'hero-seat':''} ${p.folded?'folded':''} ${p.out?'out':''}" style="left:${x}%;top:${y}%">
           <div class="seat-cards">${p.hole?.map(c=>cardHTML(c,c==='XX')).join('')||''}</div>
-          <div class="seat-name">${p.nick}${hero?' · YOU':''}</div>
-          <div class="seat-stack">${money(p.stack)} фиш.</div>
+          <div class="seat-name">${p.nick}${hero?' · YOU':''} <em>${p.position||''}</em></div>
+          <div class="seat-stack">${money(p.stack)} · <b>${bb(p.stackBB)} BB</b></div>
           ${i===snapshot.button?'<div class="dealer">D</div>':''}
         </div>`
       }).join('')}
@@ -68,19 +66,19 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
   }
   function renderDecision(legal){
     const area=root.querySelector('#decisionArea'); if(!area)return;
-    const call=money(legal.toCall);
+    const call=bb(legal.toCallBB);
     area.innerHTML=`
       <div class="decision-main">
         <button class="poker-action fold" data-a="fold">FOLD</button>
-        <button class="poker-action" data-a="${legal.canCheck?'check':'call'}">${legal.canCheck?'CHECK':'CALL '+call}</button>
+        <button class="poker-action" data-a="${legal.canCheck?'check':'call'}">${legal.canCheck?'CHECK':'CALL '+call+' BB'}</button>
         <button class="poker-action raise" id="raiseBtn">RAISE</button>
       </div>
       <div class="raise-row">
-        <input id="raiseRange" type="range" min="${Math.max(legal.minRaise,legal.toCall+2)}" max="${Math.max(legal.minRaise,legal.stack)}" step="1" value="${Math.min(Math.max(legal.minRaise,legal.pot*.65),legal.stack)}">
+        <div class="sizing-presets"><button data-size="0.33">33%</button><button data-size="0.5">50%</button><button data-size="0.66">66%</button><button data-size="1">POT</button><button id="allInBtn">ALL-IN</button></div><input id="raiseRange" type="range" min="${legal.minRaise}" max="${legal.maxRaise}" step="${Math.max(1,Math.round(legal.bb/10))}" value="${Math.min(legal.maxRaise,Math.max(legal.minRaise,legal.currentBet||legal.minRaise))}">
         <span id="raiseValue"></span>
       </div>`;
     const range=area.querySelector('#raiseRange'), val=area.querySelector('#raiseValue');
-    const sync=()=>val.textContent=`до ${money(+range.value)} BB`;sync();range.oninput=sync;
+    const sync=()=>val.textContent=`до ${money(+range.value)} · ${bb(+range.value/legal.bb)} BB`;sync();range.oninput=sync; area.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{range.value=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(legal.pot*+b.dataset.size)));sync()}); area.querySelector('#allInBtn').onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">ALL-IN</div>';r?.({type:'allin'})};
     area.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">Ход принят</div>';r?.({type:b.dataset.a})});
     area.querySelector('#raiseBtn').onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">Ход принят</div>';r?.({type:'raise',amount:+range.value})};
   }
@@ -95,7 +93,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
       <p>${lastHand.winners.join(', ')} · банк ${money(lastHand.pot)}</p>
       ${outs.length?`<div class="bust-line">${outs.map(x=>`${x.nick} вылетает · ${x.place} место`).join('<br>')}</div>`:''}
       <div class="result-board">${lastHand.board.map(c=>cardHTML(c)).join('')}</div>
-      <div class="level-strip"><span>Сейчас ${lastHand.sb}/${lastHand.bb}</span><b>Новые блайнды каждые 3 руки</b></div>
+      <div class="level-strip"><span>${money(lastHand.sb)} / ${money(lastHand.bb)} / ${money(lastHand.ante)} BBA</span><b>Уровни по 5 минут</b></div>
       <button class="btn btn-primary" id="nextHand">СЛЕДУЮЩАЯ РАЗДАЧА</button>
       <button class="btn btn-secondary" id="finishSession">ЗАВЕРШИТЬ РАНЬШЕ</button>
     </div>`;
