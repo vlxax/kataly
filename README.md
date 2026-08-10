@@ -43,3 +43,22 @@
 - Reconnect.
 - Session analytics.
 - Poker Brain report.
+
+
+## V0.3 — PLAYABLE TABLE
+Добавлен первый реально играемый single-device NL Hold'em стол:
+- 6-max / 9-max из текущего лобби.
+- Реальный Hero + боты.
+- Колода и раздача hole cards.
+- Dealer / SB / BB.
+- Preflop → flop → turn → river → showdown.
+- Fold / Check / Call / Raise.
+- Слайдер рейза.
+- Боты принимают базовые решения.
+- Банк и стеки меняются.
+- Hand evaluator определяет победителя на showdown.
+- Следующая раздача.
+- Завершение тестовой сессии и запись результата в историю.
+
+Важно: это V0.3 — локальный прототип движка. Side pots, полноценные all-in edge cases,
+турнирное выбывание до одного победителя, настоящая сеть и Poker Brain-анализ будут дальше.

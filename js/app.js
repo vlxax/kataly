@@ -1,3 +1,4 @@
+import { mountPokerTable } from './tableUI.js';
 
 import { state, saveState, resetDemo } from './state.js';
 import { makeBots, BOT_ARCHETYPES } from './bots/botEngine.js';
