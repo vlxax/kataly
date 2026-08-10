@@ -1,11 +1,10 @@
 import { analyzeSession } from './analytics/sessionAnalysis.js';
 import { mountPokerTable } from './tableUI.js';
 
-import { state, saveState, resetDemo } from './state.js';
-import { makeBots, BOT_ARCHETYPES } from './bots/botEngine.js';
+import { state, saveState } from './state.js';
+import { makeBots } from './bots/botEngine.js';
 import { createInvite, mockIncomingInvite } from './multiplayer/invites.js';
 import { createLobby } from './multiplayer/lobby.js';
-import { createSessionRecord } from './analytics/handHistory.js';
 
 const $ = (q) => document.querySelector(q);
 const app = document.getElementById('app');
