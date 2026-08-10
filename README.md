@@ -396,3 +396,14 @@ of `seat.el.querySelector`.
 - Postflop decisions now combine made hand, draws, pot odds, SPR, position, profile, previous aggression and range advantage.
 - Bot VPIP/PFR/3bet-style counters are accumulated from actual actions and shown as a tiny live HUD.
 - Hero's oval seat is minimized because the real Hero cockpit remains anchored at the bottom.
+
+## V2.2 — MOBILE ROOM REBUILD
+- Rebuilt the live table from the supplied portrait mobile-poker reference geometry.
+- Hero is camera-locked at the lower-left every hand; BTN/SB/BB/UTG only changes the badge, never Hero's screen position.
+- Duplicate Hero seat on the oval is hidden.
+- Hero hole cards, name, position and stack are physically anchored at the bottom.
+- Opponent stacks show chip count first and BB second.
+- FOLD / CHECK-CALL / BET-RAISE are one fixed safe-area row and always fit on screen.
+- Raise sizing opens upward instead of pushing the BET/RAISE control below the viewport.
+- Opponent actions remain next to the players; no bottom narration block.
+- Bot timing is contextual and personality-aware: occasional snap decisions, normal multi-second decisions, and long river / large-pot tanks.

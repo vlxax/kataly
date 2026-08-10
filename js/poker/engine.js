@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=210';
-import { PokerEventBus } from './eventBus.js?v=210';
+import { createDeck, shuffle } from './deck.js?v=220';
+import { PokerEventBus } from './eventBus.js?v=220';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -707,11 +707,37 @@ export class HoldemDemo {
     return{type:'check'};
   }
 
+  botThinkDelay(player,legal){
+    if(this.botDelayMs===0)return 0;
+    const profile=this.preflopProfile(player);
+    const toCallRatio=legal.toCall/Math.max(1,legal.pot+legal.toCall);
+    const huge=legal.toCallBB>=10||toCallRatio>.42;
+    const river=this.street==='river';
+    const turn=this.street==='turn';
+    const facingBet=legal.toCall>0;
+
+    const snapChance=profile.name==='NIT'?.22:profile.name==='LAG'?.10:.15;
+    if(!huge&&!river&&Math.random()<snapChance){
+      return 650+Math.floor(Math.random()*850);
+    }
+
+    let min=1200,max=3200;
+    if(this.street!=='preflop'){min=1800;max=4700}
+    if(turn){min=2200;max=5600}
+    if(river){min=2800;max=7200}
+    if(huge&&facingBet){min+=1400;max+=2200}
+
+    if(profile.name==='CALLER'){min-=250;max-=350}
+    if(profile.name==='NIT'&&facingBet){min+=250;max+=450}
+    if(profile.name==='LAG'){min-=150;max+=650}
+
+    min=Math.max(700,min);
+    max=Math.max(min+500,max);
+    return min+Math.floor(Math.random()*(max-min));
+  }
+
   async botAction(player,legal){
-    const dramatic=(legal.toCallBB>=8 || (legal.potBB&&legal.toCallBB/legal.potBB>.65));
-    const base=this.botDelayMs===0?0:(dramatic?1500:650);
-    const jitter=this.botDelayMs===0?0:Math.floor(Math.random()*(dramatic?1900:1200));
-    await sleep(base+jitter);
+    await sleep(this.botThinkDelay(player,legal));
 
     const power=this.preflopStrength(player.hole);
     if(this.street==='preflop'){

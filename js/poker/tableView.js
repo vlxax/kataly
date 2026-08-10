@@ -51,6 +51,7 @@ export class TableView{
         <div class="v1-hero-strip">
           <div id="v1HeroCards" class="v1-hero-cards"></div>
           <div class="v1-hero-meta">
+            <strong>${this.heroNick} · YOU</strong>
             <span id="v1HeroPos" class="v1-hero-position">POSITION —</span>
             <b id="v1HeroStack">—</b>
           </div>
@@ -87,10 +88,12 @@ export class TableView{
   }
 
   seatPos(i,n){
+    const heroIndex=Math.max(0,this.players.findIndex(p=>p.nick===this.heroNick));
+    const rel=(i-heroIndex+n)%n;
     const maps={
-      6:[[50,8],[84,25],[88,61],[50,87],[12,61],[16,25]]
+      6:[[20,82],[17,57],[17,25],[50,10],[83,25],[83,57]]
     };
-    return (maps[n]||maps[6])[i]||[50,50];
+    return (maps[n]||maps[6])[rel]||[50,50];
   }
 
   updateSnapshot(s){
@@ -113,7 +116,7 @@ export class TableView{
       const hud=st&&p.nick!==this.heroNick&&st.hands>0
         ? `<small>${Math.round(st.vpip/Math.max(1,st.hands)*100)}/${Math.round(st.pfr/Math.max(1,st.hands)*100)}/${Math.round(st.threeBet/Math.max(1,st.hands)*100)}</small>`
         : '';
-      seat.stack.innerHTML=`<b>${bb(p.stackBB)} BB</b><span>${money(p.stack)}</span>${hud}`;
+      seat.stack.innerHTML=`<b>${money(p.stack)}</b><span>${bb(p.stackBB)} BB</span>${hud}`;
       seat.pos.textContent=p.position?` ${p.position}`:'';
       seat.root.classList.toggle('folded',!!p.folded);
       seat.root.classList.toggle('out',!!p.out);
@@ -129,7 +132,7 @@ export class TableView{
     const hero=s.players.find(p=>p.nick===this.heroNick);
     if(hero){
       this.root.querySelector('#v1HeroPos').textContent=`POSITION ${hero.position||'—'} · ${bb(s.heroStackBB)} BB`;
-      this.root.querySelector('#v1HeroStack').textContent=`STACK ${money(hero.stack)}`;
+      this.root.querySelector('#v1HeroStack').textContent=money(hero.stack);
     }
   }
 

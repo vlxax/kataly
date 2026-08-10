@@ -887,3 +887,180 @@ html,body{width:100%;min-height:100%;margin:0;background:#050608}
   color:#8d8790;
   letter-spacing:.04em;
 }
+
+/* ===== V2.2 MOBILE ROOM REBUILD ===== */
+.v1-room .v1-shell{
+  width:100%;
+  max-width:430px;
+  height:100dvh;
+  min-height:100dvh;
+  margin:0 auto;
+  overflow:hidden;
+  background:#050607;
+}
+.v1-room .v1-top{
+  left:10px;right:10px;
+  top:calc(6px + env(safe-area-inset-top));
+  height:42px;
+  z-index:90;
+}
+.v1-room .v1-table-stage{
+  left:0;right:0;
+  top:calc(48px + env(safe-area-inset-top));
+  bottom:calc(78px + env(safe-area-inset-bottom));
+}
+.v1-room .v1-felt{
+  left:3.5%;
+  right:3.5%;
+  top:2%;
+  bottom:1%;
+  border-radius:47% / 25%;
+  border-width:10px;
+  background:
+    radial-gradient(ellipse at 50% 43%,rgba(105,87,57,.17),transparent 38%),
+    radial-gradient(ellipse at 50% 50%,#4a3927 0%,#392c1f 52%,#241b14 82%,#15100c 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.035),
+    inset 0 0 90px rgba(0,0,0,.40),
+    0 16px 45px rgba(0,0,0,.55);
+}
+.v1-room .v1-felt:before{border-radius:47% / 25%}
+.v1-room .v1-board{top:44%;gap:3px}
+.v1-room .v1-pot{
+  top:52.5%;
+  min-width:88px;
+  background:rgba(33,25,18,.86);
+  border:1px solid rgba(255,255,255,.06);
+}
+.v1-room .v1-deck{top:34%;opacity:.42}
+
+/* Opponent seats: compact mobile-room plates around the oval. */
+.v1-room .v1-seat{width:88px;z-index:10}
+.v1-room .v1-seat.hero-seat{display:none!important}
+.v1-room .v1-avatar{
+  width:34px;height:34px;margin:0 auto -8px;
+  border:2px solid #4a4e55;background:#30343a;
+}
+.v1-room .v1-playerbox{
+  min-width:76px;padding:7px 5px 5px;border-radius:7px;
+  background:linear-gradient(180deg,#202328,#111317);
+  border:1px solid #343840;
+  box-shadow:0 5px 12px rgba(0,0,0,.52);
+}
+.v1-room .v1-name{font-size:7px;line-height:1.1}
+.v1-room .v1-stack{margin-top:3px}
+.v1-room .v1-stack b{
+  display:block;font-size:9px;color:#68bde8;font-weight:900;
+}
+.v1-room .v1-stack span{
+  display:block;font-size:5px;color:#9599a0;
+}
+.v1-room .v1-stack small{font-size:4.5px;color:#716d73}
+.v1-room .v1-seat-cards{height:29px;margin-bottom:-2px}
+.v1-room .v1-seat-cards .v1-card{width:20px;height:29px}
+.v1-room .v1-bet{
+  top:calc(100% + 7px);padding:3px 6px;
+  background:rgba(39,28,20,.90);color:#f1e1c2;
+  border:1px solid rgba(255,255,255,.06);
+}
+.v1-room .v1-action{
+  right:-5px;top:29px;min-width:34px;padding:3px 5px;font-size:6px;
+}
+
+/* Hero is one fixed cockpit at the bottom-left, like a native mobile poker client. */
+.v1-room .v1-hero-strip{
+  left:12px;right:auto;
+  width:126px;height:92px;
+  bottom:calc(72px + env(safe-area-inset-bottom));
+  padding:0;border:0;background:transparent;
+  display:block;z-index:62;
+}
+.v1-room .v1-hero-cards{
+  position:absolute;left:0;top:0;
+  min-width:82px;min-height:58px;gap:0;z-index:3;
+}
+.v1-room .v1-hero-cards .v1-card{
+  width:43px;height:58px;margin-right:-5px;
+  border-radius:6px;box-shadow:0 5px 13px rgba(0,0,0,.5);
+}
+.v1-room .v1-hero-meta{
+  position:absolute;left:0;top:48px;
+  width:112px;min-height:42px;padding:7px 7px 5px;
+  border-radius:7px;
+  background:linear-gradient(180deg,#22252a,#101216);
+  border:1px solid #3b4048;
+  box-shadow:0 6px 16px rgba(0,0,0,.55);
+}
+.v1-room .v1-hero-meta strong{
+  display:block;font-size:7px;line-height:1.1;color:#fff;white-space:nowrap;
+}
+.v1-room .v1-hero-position{
+  margin-top:3px;font-size:5.5px!important;
+  color:#d8b354!important;letter-spacing:.04em;
+}
+.v1-room .v1-hero-meta b{
+  display:block;margin-top:2px;font-size:10px;line-height:1;color:#67bce8;
+}
+
+/* Main actions always fit the phone width. Raise sizing opens UP, never below the viewport. */
+.v1-room .v1-controls{
+  position:absolute;left:6px;right:6px;
+  bottom:calc(5px + env(safe-area-inset-bottom));
+  height:64px!important;min-height:64px!important;
+  padding:5px;border-radius:11px;
+  background:rgba(8,9,11,.96);
+  border:1px solid rgba(255,255,255,.07);
+  z-index:80;overflow:visible!important;
+}
+.v1-room .v1-controls-hidden{
+  height:0!important;min-height:0!important;padding:0!important;
+  border:0!important;background:transparent!important;
+}
+.v1-room .v1-context{
+  height:12px;margin:0 2px 4px;
+  font-size:5.5px;line-height:12px;
+}
+.v1-room .v1-main-actions{
+  display:grid;
+  grid-template-columns:1fr 1.12fr 1.18fr;
+  gap:4px;
+}
+.v1-room .v1-main-actions button{
+  width:100%;min-width:0;height:40px;padding:0 3px;
+  border-radius:8px;font-size:9px;line-height:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.v1-room .v1-raise-drawer{
+  position:absolute;display:none;left:0;right:0;bottom:66px;
+  margin:0;padding:7px;border-radius:12px;
+  background:rgba(10,11,14,.985);
+  border:1px solid rgba(255,255,255,.09);
+  box-shadow:0 -10px 35px rgba(0,0,0,.42);
+}
+.v1-room .v1-raise-drawer.open{display:block}
+.v1-room .v1-presets{grid-template-columns:repeat(4,1fr);gap:4px}
+.v1-room .v1-presets button{height:29px;font-size:6.5px}
+.v1-room .v1-raise-drawer .confirm{height:38px;font-size:9px}
+.v1-room .v1-raise-drawer input{height:22px}
+
+/* Opponent decisions live beside opponent seats, never in a bottom narration block. */
+.v1-room .v1-waiting,.v1-room .v1-turn-status{display:none!important}
+.v1-room .v1-ring{width:39px;height:39px;top:19px}
+.v1-room .v1-seat:has(.v1-ring.show) .v1-playerbox{
+  border-color:#6bb66e;
+  box-shadow:0 0 0 1px rgba(107,182,110,.28),0 0 14px rgba(107,182,110,.18);
+}
+
+@media (max-width:360px){
+  .v1-room .v1-seat{width:80px}
+  .v1-room .v1-playerbox{min-width:69px}
+  .v1-room .v1-main-actions button{font-size:8px}
+  .v1-room .v1-hero-strip{transform:scale(.92);transform-origin:left bottom}
+}
+@media (max-height:700px){
+  .v1-room .v1-table-stage{bottom:calc(72px + env(safe-area-inset-bottom))}
+  .v1-room .v1-hero-strip{
+    bottom:calc(66px + env(safe-area-inset-bottom));
+    transform:scale(.88);transform-origin:left bottom;
+  }
+}
