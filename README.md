@@ -258,3 +258,14 @@ PokerEngine → PokerEventBus → TableController → TableView
 - Hero controls появляются только в ход Hero.
 - RAISE drawer открывается отдельно, как в реальном руме.
 - Новая рука стартует автоматически после короткой паузы.
+
+## V1.0.1 — ONE HAND POLISH
+- Hero hole cards have one visual source only.
+- Cards now animate from a visible deck origin.
+- Forced bets/calls/raises get chip-motion feedback.
+- End of each betting round animates committed bets toward the pot.
+- Preflop raise presets: 2x / 2.2x / 2.5x / 3x / all-in.
+- Postflop presets: 25 / 33 / 50 / 66 / pot / all-in.
+- 18-second turn ring restored.
+- Hand history records potBefore, potAfter, decisionMs, playersInHand, effectiveStackBB.
+- Bots now use current made-hand rank postflop instead of only starting-hand strength.

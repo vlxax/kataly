@@ -39,6 +39,8 @@ export class TableView{
 
         <div class="v1-table-stage">
           <div class="v1-felt">
+            <div id="v1Deck" class="v1-deck">◆</div>
+            <div id="v1ChipLayer" class="v1-chip-layer"></div>
             <div id="v1Board" class="v1-board"></div>
             <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div>
           </div>
@@ -131,23 +133,65 @@ export class TableView{
     });
   }
 
+  animateCardTo(target,node){
+    const deck=this.root.querySelector('#v1Deck');
+    const stage=this.root.querySelector('.v1-table-stage');
+    const sr=stage.getBoundingClientRect(), dr=deck.getBoundingClientRect(), tr=target.getBoundingClientRect();
+    const ghost=node.cloneNode(true);
+    ghost.classList.add('v1-flying-card');
+    ghost.style.left=(dr.left-sr.left)+'px';ghost.style.top=(dr.top-sr.top)+'px';
+    stage.appendChild(ghost);
+    requestAnimationFrame(()=>{
+      ghost.style.transform=`translate(${tr.left-dr.left+Math.max(0,(tr.width-38)/2)}px,${tr.top-dr.top}px) scale(.92)`;
+      ghost.style.opacity='1';
+    });
+    setTimeout(()=>{ghost.remove();node.classList.add('deal-in');target.appendChild(node)},190);
+  }
+
+  animateChipsFromSeat(seatIndex,label=''){
+    const seat=this.seats.get(seatIndex);if(!seat)return;
+    const layer=this.root.querySelector('#v1ChipLayer'),stage=this.root.querySelector('.v1-table-stage');
+    const sr=stage.getBoundingClientRect(),r=seat.root.getBoundingClientRect();
+    const chip=document.createElement('div');chip.className='v1-chip-flight';chip.textContent='●';
+    chip.style.left=(r.left-sr.left+r.width/2)+'px';chip.style.top=(r.top-sr.top+r.height/2)+'px';
+    layer.appendChild(chip);
+    requestAnimationFrame(()=>{chip.style.transform='translate(-50%,-50%) scale(.8)';chip.style.opacity='.25'});
+    setTimeout(()=>chip.remove(),260);
+  }
+
+  async collectBets(){
+    const stage=this.root.querySelector('.v1-table-stage'),sr=stage.getBoundingClientRect();
+    const pot=this.root.querySelector('.v1-pot'),pr=pot.getBoundingClientRect();
+    const ghosts=[];
+    this.seats.forEach(seat=>{
+      if(!seat.bet.classList.contains('show'))return;
+      const r=seat.bet.getBoundingClientRect();
+      const g=document.createElement('div');g.className='v1-collect-chip';g.textContent='●';
+      g.style.left=(r.left-sr.left+r.width/2)+'px';g.style.top=(r.top-sr.top+r.height/2)+'px';
+      stage.appendChild(g);ghosts.push(g);
+      requestAnimationFrame(()=>g.style.transform=`translate(${pr.left-r.left}px,${pr.top-r.top}px) scale(.65)`);
+    });
+    await new Promise(r=>setTimeout(r,280));
+    ghosts.forEach(g=>g.remove());
+    this.seats.forEach(seat=>{seat.bet.classList.remove('show');seat.bet.innerHTML=''});
+  }
+
   postForcedBet(e){
     const seat=this.seats.get(e.seat);if(!seat)return;
     seat.action.textContent=e.label;
+    this.animateChipsFromSeat(e.seat,e.label);
     seat.action.className='v1-action show forced';
     this.flashAction(seat,850);
   }
 
   dealCard(e){
     const seat=this.seats.get(e.seat);if(!seat)return;
-    const node=cardNode(e.card,e.card==='XX');
-    node.classList.add('deal-in');
-    seat.cards.appendChild(node);
-
     if(e.nick===this.heroNick){
       const heroCard=cardNode(e.card,false);
-      heroCard.classList.add('hero-deal-in');
-      this.root.querySelector('#v1HeroCards').appendChild(heroCard);
+      this.animateCardTo(this.root.querySelector('#v1HeroCards'),heroCard);
+    }else{
+      const node=cardNode(e.card,true);
+      this.animateCardTo(seat.cards,node);
     }
   }
 
@@ -166,6 +210,7 @@ export class TableView{
       PLAYER_RAISED:'RAISE',PLAYER_ALLIN:'ALL-IN'
     };
     seat.action.textContent=labels[type]||type;
+    if(['PLAYER_CALLED','PLAYER_RAISED','PLAYER_ALLIN'].includes(type))this.animateChipsFromSeat(e.seat,type);
     if(e.bet)seat.action.textContent+=` ${bb(e.bet/((this.lastBB)||100))} BB`;
     seat.action.className='v1-action show '+type.toLowerCase().replace('player_','');
     this.flashAction(seat,1200);
@@ -179,8 +224,8 @@ export class TableView{
   }
 
   dealBoardCard(e){
-    const node=cardNode(e.card,false);node.classList.add('board-in');
-    this.root.querySelector('#v1Board').appendChild(node);
+    const node=cardNode(e.card,false);
+    this.animateCardTo(this.root.querySelector('#v1Board'),node);
   }
 
   revealCards(e){
@@ -207,11 +252,14 @@ export class TableView{
     this.root.querySelector('#v1Controls').innerHTML=`<div class="v1-waiting">${text}</div>`;
   }
 
-  renderHeroControls(legal,onAction){
+  renderHeroControls(legal,onAction,street='preflop'){
     const c=this.root.querySelector('#v1Controls');
-    const call=bb(legal.toCallBB);
-    const min=legal.minRaise,max=legal.maxRaise;
+    const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise;
     let selected=Math.min(max,Math.max(min,legal.currentBet||min));
+    const pre=street==='preflop';
+    const presets=pre
+      ? `<button data-bb="2">2x</button><button data-bb="2.2">2.2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button>`
+      : `<button data-p="0.25">25%</button><button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.66">66%</button><button data-p="1">POT</button>`;
 
     c.innerHTML=`
       <div class="v1-context">
@@ -225,11 +273,7 @@ export class TableView{
         <button id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${legal.currentBet?'RAISE':'BET'}</button>
       </div>
       <div id="v1RaiseDrawer" class="v1-raise-drawer">
-        <div class="v1-presets">
-          <button data-p="0.25">25%</button><button data-p="0.33">33%</button>
-          <button data-p="0.50">50%</button><button data-p="0.66">66%</button>
-          <button data-p="1">POT</button><button data-allin="1">ALL-IN</button>
-        </div>
+        <div class="v1-presets">${presets}<button data-allin="1">ALL-IN</button></div>
         <input id="v1Range" type="range" min="${min}" max="${max}" step="${Math.max(1,Math.round(legal.bb/10))}" value="${selected}">
         <button id="v1RaiseConfirm" class="confirm">RAISE TO <b>${bb(selected/legal.bb)} BB</b></button>
       </div>`;
@@ -240,11 +284,15 @@ export class TableView{
     c.querySelector('#v1RaiseOpen').onclick=()=>drawer.classList.toggle('open');
     range.oninput=sync;
     c.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
-      const frac=Number(b.dataset.p);
-      selected=Math.max(min,Math.min(max,Math.round(legal.currentBet+legal.toCall+legal.pot*frac)));
+      selected=Math.max(min,Math.min(max,Math.round(legal.currentBet+legal.toCall+legal.pot*Number(b.dataset.p))));
+      range.value=selected;sync();
+    });
+    c.querySelectorAll('[data-bb]').forEach(b=>b.onclick=()=>{
+      selected=Math.max(min,Math.min(max,Math.round(legal.bb*Number(b.dataset.bb))));
       range.value=selected;sync();
     });
     c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});
     confirm.onclick=()=>onAction({type:'raise',amount:selected});
   }
+}
 }

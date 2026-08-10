@@ -592,3 +592,22 @@ button{cursor:pointer}
 @media(max-height:720px){
   .v1-table-stage{bottom:198px}.v1-hero-strip{bottom:141px}.v1-controls{height:128px}
 }
+
+
+/* ===== V1.0.1 ONE HAND POLISH ===== */
+.v1-deck{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);width:27px;height:38px;border-radius:5px;
+ display:grid;place-items:center;background:linear-gradient(145deg,#681638,#2b0b1c);border:1px solid #a83b69;color:#ff8bb6;
+ box-shadow:0 5px 12px #0008;z-index:3;font-size:10px}
+.v1-chip-layer{position:absolute;inset:0;pointer-events:none;z-index:15}
+.v1-flying-card{position:absolute;z-index:50;margin:0;transition:transform .18s cubic-bezier(.2,.75,.25,1),opacity .18s;pointer-events:none}
+.v1-chip-flight,.v1-collect-chip{position:absolute;z-index:45;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;
+ background:#cfb465;border:2px solid #f1db94;color:#5d4b19;font-size:8px;box-shadow:0 3px 9px #0009;transition:transform .24s ease,opacity .24s}
+.v1-collect-chip{transition:transform .28s cubic-bezier(.2,.75,.25,1)}
+.v1-seat:has(.v1-ring.show) .v1-playerbox{border-color:#9e315d;box-shadow:0 0 0 1px #7a2147,0 0 20px #c9236540}
+.v1-ring.show{border:0;background:conic-gradient(#ff2e7d calc(var(--turn-progress,1)*360deg),#33232b 0);
+ -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0);
+ animation:none}
+.v1-controls{overflow:visible}
+.v1-main-actions button:active,.v1-presets button:active{transform:scale(.97)}
+.v1-hero-cards{min-width:82px;min-height:52px}
+.v1-seat-cards{min-width:44px}
