@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#08090b" />
-  <title>КАТАЛЫ · V0.8 POKER ENGINE CORE</title>
+  <title>КАТАЛЫ · V0.8.2 MONEY FIX</title>
   <link rel="stylesheet" href="./css/kataly.css" />
 </head>
 <body>
   <div id="app"><div style="min-height:100vh;background:#08090b;color:#fff;display:grid;place-items:center;font-family:Arial,sans-serif;padding:24px;text-align:center"><div><b style="font-size:24px">КАТАЛЫ</b><p style="opacity:.65">Загрузка V0.7.1…</p></div></div></div>
   <script type="module">
-    import('./js/app.js?v=080-engine-core').catch((err) => {
+    import('./js/app.js?v=082-money-fix').catch((err) => {
       console.error('KATALY BOOT ERROR', err);
       const app = document.getElementById('app');
       if (app) app.innerHTML = `<div style="min-height:100vh;background:#08090b;color:#fff;display:grid;place-items:center;font-family:Arial,sans-serif;padding:28px"><div style="max-width:520px"><div style="color:#ff2f87;font-weight:800;letter-spacing:.08em">KATALY · BOOT ERROR</div><h1 style="font-size:30px">Приложение не запустилось</h1><p style="color:#bbb;line-height:1.5">Теперь вместо чёрного экрана показывается реальная ошибка загрузки. Обнови страницу. Если сообщение останется — пришли его мне.</p><pre style="white-space:pre-wrap;background:#15151a;border:1px solid #333;border-radius:12px;padding:12px;color:#ffb6d4">${String(err && (err.stack || err.message) || err)}</pre></div></div>`;

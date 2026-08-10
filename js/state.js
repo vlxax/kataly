@@ -1,6 +1,6 @@
 const DEFAULT = {
   nick:'Lera',
-  wallet:25000,
+  wallet:999999999,
   view:'home',
   invites:[],
   history:[]
@@ -35,6 +35,9 @@ if (!Array.isArray(state.history)) state.history = [];
 if (!['home','invites','history','stats'].includes(state.view)) state.view = 'home';
 if (!Number.isFinite(Number(state.wallet))) state.wallet = DEFAULT.wallet;
 state.wallet = Number(state.wallet);
+// DEV migration: old localStorage could leave the tester broke and block the poker engine.
+// Until economy is production-ready, always keep a large test bankroll.
+state.wallet = 999999999; // DEV: unlimited test bankroll
 if (!state.nick) state.nick = DEFAULT.nick;
 
 export function saveState(){

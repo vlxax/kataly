@@ -8,6 +8,9 @@ import { createLobby } from './multiplayer/lobby.js';
 
 const $ = (q) => document.querySelector(q);
 const app = document.getElementById('app');
+const DEV_FREE_PLAY = true;
+state.wallet = 999999999;
+saveState(); // force dev bankroll on every load // engine testing: buy-ins do not block table entry
 
 function money(n){ return new Intl.NumberFormat('ru-RU').format(n) + ' 🪙'; }
 function toast(text){
@@ -23,7 +26,7 @@ function shell(content){
   app.innerHTML = `<div class="app-shell"><main class="phone">
     <div class="topbar">
       <div class="brand">КАТА<span>ЛЫ</span></div>
-      <div class="wallet">БАНКРОЛЛ <b>${money(state.wallet)}</b></div>
+      <div class="wallet">${DEV_FREE_PLAY?'ТЕСТОВЫЙ БАНКРОЛЛ':'БАНКРОЛЛ'} <b>${money(state.wallet)}</b></div>
     </div>
     ${content}
   </main>
@@ -113,7 +116,7 @@ function openGameSetup(focusInvite=false){
       <input id="friendNick" placeholder="Ник друга">
       <button id="addFriend" class="btn btn-secondary mini">+ ДОБАВИТЬ</button>
     </div>
-    <div class="hint">Это демо-инвайт. Настоящий онлайн-мультиплеер подключим после игрового движка.</div>
+    <div class="hint">ТЕСТОВЫЙ РЕЖИМ: вход за стол сейчас бесплатный — игровая валюта не блокирует проверку движка.</div>
 
     <button class="btn btn-primary" id="goLobby" style="width:100%;margin-top:16px">ПРОДОЛЖИТЬ</button>
     <button class="btn btn-ghost" id="closeSheet" style="width:100%">ОТМЕНА</button>
@@ -150,7 +153,7 @@ function openGameSetup(focusInvite=false){
   };
   wrap.querySelector('#closeSheet').onclick=()=>wrap.remove();
   wrap.querySelector('#goLobby').onclick=()=>{
-    if(buyIn>state.wallet) return toast('Не хватает внутренней валюты');
+    if(!DEV_FREE_PLAY && buyIn>state.wallet) return toast('Не хватает внутренней валюты');
     const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});
     wrap.remove(); openLobby(lobby);
   };
@@ -171,14 +174,15 @@ function openLobby(lobby){
       <div class="felt-copy"><b>${lobby.seats}-MAX</b><span>50 / 100</span></div>
     </div>
     <div class="lobby-summary"><div><span>Людей</span><b>${lobby.realPlayers.length}</b></div><div><span>Ботов</span><b>${bots.length}</b></div><div><span>Мест</span><b>${lobby.seats}</b></div></div>
+    <div class="engine-test-note">ENGINE TEST · БАЙ-ИН НЕ СПИСЫВАЕТСЯ</div>
     <button class="btn btn-primary" id="startDemo" style="width:100%">СЕСТЬ ЗА СТОЛ</button>
     <button class="btn btn-ghost" id="leaveLobby" style="width:100%">НАЗАД</button>
   </div>`;
   document.body.appendChild(wrap);
   wrap.querySelector('#leaveLobby').onclick=()=>wrap.remove();
   wrap.querySelector('#startDemo').onclick=()=>{
-    if(lobby.buyIn>state.wallet) return toast('Не хватает внутренней валюты');
-    state.wallet-=lobby.buyIn;
+    if(!DEV_FREE_PLAY && lobby.buyIn>state.wallet) return toast('Не хватает внутренней валюты');
+    if(!DEV_FREE_PLAY) state.wallet-=lobby.buyIn;
     saveState();
     wrap.remove();
 
@@ -187,9 +191,9 @@ function openLobby(lobby){
       heroNick: state.nick,
       onExit: ()=>render(),
       onSessionEnd: (result)=>{
-        const chipDelta = Math.round((result.stackEnd-result.stackStart)*10)/10;
+        const chipDelta = Math.round((result.chipDeltaBB!=null?result.chipDeltaBB:((result.stackEnd-result.stackStart)/100))*10)/10;
         const reward = (result.tournament && result.tournament.prize) || 0;
-        state.wallet += reward;
+        if(!DEV_FREE_PLAY) state.wallet += reward;
 
         const session={
           id:'session_'+Math.random().toString(36).slice(2,10),
@@ -201,8 +205,8 @@ function openLobby(lobby){
           playerCount:lobby.players.length,
           status:'completed-demo',
           hands:result.hands,
-          heroStackStart:result.stackStart,
-          heroStackEnd:result.stackEnd,
+          heroStackStart:result.stackStartBB!=null?result.stackStartBB:result.stackStart,
+          heroStackEnd:result.stackEndBB!=null?result.stackEndBB:result.stackEnd,
           chipDelta,
           reward,
           place:(result.tournament && result.tournament.heroPlace) || null,

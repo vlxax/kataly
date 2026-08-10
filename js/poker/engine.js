@@ -188,7 +188,9 @@ export class HoldemDemo {
 
     this.timer = setInterval(() => {
       if(!this.finished){
-        this.updateLevel();
+        // Important: blind level is applied only BETWEEN hands.
+        // During a hand we only refresh the countdown UI.
+        if(!this.running) this.updateLevel();
         this.emit();
       }
     }, 1000);
@@ -332,6 +334,26 @@ export class HoldemDemo {
     if(this.onChange) this.onChange(this.snapshot());
   }
 
+  postDead(player, amount, label){
+    const paid = Math.min(
+      Math.max(0, Math.round(amount)),
+      player.stack
+    );
+
+    player.stack -= paid;
+    player.totalBet += paid;
+    this.pot += paid;
+
+    if(player.stack === 0) player.allIn = true;
+
+    if(label){
+      player.lastAction = label;
+      this.log.push(`${player.nick}: ${label} ${paid.toLocaleString('ru-RU')}`);
+    }
+
+    return paid;
+  }
+
   take(player, amount, label){
     const paid = Math.min(
       Math.max(0, Math.round(amount)),
@@ -373,7 +395,7 @@ export class HoldemDemo {
     }
   }
 
-  legalFor(player){
+  legalFor(player, raiseAllowed=true){
     const toCall = Math.max(0, this.currentBet - player.bet);
     const maxTarget = player.bet + player.stack;
 
@@ -387,7 +409,7 @@ export class HoldemDemo {
     return {
       toCall,
       canCheck:toCall === 0,
-      canRaise:maxTarget > this.currentBet,
+      canRaise:raiseAllowed && maxTarget > this.currentBet,
       minRaise:Math.min(maxTarget, minTarget),
       maxRaise:maxTarget,
       stack:player.stack,
@@ -409,8 +431,8 @@ export class HoldemDemo {
       return;
     }
 
-    this.running = true;
     this.updateLevel();
+    this.running = true;
     this.handNo += 1;
 
     this.deck = shuffle(createDeck());
@@ -428,8 +450,23 @@ export class HoldemDemo {
       p.folded = p.out;
       p.allIn = false;
       p.lastAction = '';
-      p.hole = p.out ? [] : [this.deck.pop(), this.deck.pop()];
+      p.hole = [];
     });
+
+    // Two dealing rounds guarantee every active seat receives exactly two cards.
+    let dealSeat = this.nextLive(this.button);
+    const activeCount = this.active().length;
+    for(let round=0; round<2; round++){
+      let cursor = dealSeat;
+      for(let n=0; n<activeCount; n++){
+        const p = this.players[cursor];
+        if(!p.out && p.stack > 0){
+          if(!this.deck.length) throw new Error('DECK_EMPTY_HOLE_CARDS');
+          p.hole.push(this.deck.pop());
+        }
+        cursor = this.nextLive(cursor);
+      }
+    }
 
     this.assignPositions();
 
@@ -446,9 +483,9 @@ export class HoldemDemo {
     }
 
     if(this.bigBlindAnte && this.ante > 0){
-      this.take(this.players[bbIndex], this.ante, 'BBA');
+      this.postDead(this.players[bbIndex], this.ante, 'BBA');
     } else if(this.ante > 0){
-      this.active().forEach(p => this.take(p, this.ante, 'ANTE'));
+      this.active().forEach(p => this.postDead(p, this.ante, 'ANTE'));
     }
 
     this.take(this.players[sbIndex], this.sb, 'SB');
@@ -508,9 +545,26 @@ export class HoldemDemo {
 
     let idx = startIndex;
     let acted = new Set();
+    let raiseRights = new Set(
+      this.canAct().map(p => p.seat)
+    );
     let guard = 0;
 
-    while(guard++ < 200){
+    while(guard++ < 300){
+      const actionableNow = this.canAct();
+
+      // If everybody except one player is all-in and that player owes nothing,
+      // there is no reason to force fake CHECKs on every remaining street.
+      if(
+        actionableNow.length === 0 ||
+        (
+          actionableNow.length === 1 &&
+          actionableNow[0].bet >= this.currentBet
+        )
+      ){
+        return;
+      }
+
       const player = this.players[idx];
 
       if(
@@ -519,7 +573,11 @@ export class HoldemDemo {
         !player.allIn &&
         player.stack > 0
       ){
-        const legal = this.legalFor(player);
+        const legal = this.legalFor(
+          player,
+          raiseRights.has(player.seat)
+        );
+
         let action;
 
         if(player.nick === this.heroNick){
@@ -534,14 +592,23 @@ export class HoldemDemo {
           action = await this.botAction(player, legal);
         }
 
-        const raised = this.applyAction(
+        const outcome = this.applyAction(
           player,
           action || {type:legal.canCheck ? 'check' : 'fold'},
           legal
         );
 
-        if(raised){
+        // Once a player has acted, a short all-in raise does NOT restore
+        // their raise right. Only a full legal raise reopens action.
+        raiseRights.delete(player.seat);
+
+        if(outcome.fullRaise){
           acted = new Set([player.seat]);
+          raiseRights = new Set(
+            this.canAct()
+              .filter(p => p.seat !== player.seat)
+              .map(p => p.seat)
+          );
         } else {
           acted.add(player.seat);
         }
@@ -553,6 +620,13 @@ export class HoldemDemo {
 
       const actionable = this.canAct();
       if(actionable.length === 0) return;
+
+      if(
+        actionable.length === 1 &&
+        actionable[0].bet >= this.currentBet
+      ){
+        return;
+      }
 
       const closed = actionable.every(p =>
         p.bet === this.currentBet && acted.has(p.seat)
@@ -567,9 +641,9 @@ export class HoldemDemo {
   }
 
   applyAction(player, action, legal){
-    const beforeBet = player.bet;
     const actionType = action.type;
     let amount = 0;
+    let fullRaise = false;
 
     if(actionType === 'fold'){
       player.folded = true;
@@ -590,15 +664,14 @@ export class HoldemDemo {
     }
 
     else if(actionType === 'allin'){
-      const target = player.bet + player.stack;
       const oldCurrent = this.currentBet;
-
       amount = this.take(player, player.stack, 'ALL-IN');
 
-      if(player.bet > this.currentBet){
+      if(player.bet > oldCurrent){
         const raiseSize = player.bet - oldCurrent;
         if(raiseSize >= this.lastFullRaise){
           this.lastFullRaise = raiseSize;
+          fullRaise = true;
         }
         this.currentBet = player.bet;
       }
@@ -610,6 +683,10 @@ export class HoldemDemo {
       }
 
       const requested = Math.round(Number(action.amount));
+      if(!Number.isFinite(requested)){
+        throw new Error('INVALID_RAISE_AMOUNT');
+      }
+
       const target = Math.max(
         legal.minRaise,
         Math.min(legal.maxRaise, requested)
@@ -618,10 +695,11 @@ export class HoldemDemo {
       const oldCurrent = this.currentBet;
       amount = this.take(player, target - player.bet, 'RAISE');
 
-      if(player.bet > this.currentBet){
+      if(player.bet > oldCurrent){
         const raiseSize = player.bet - oldCurrent;
         if(raiseSize >= this.lastFullRaise){
           this.lastFullRaise = raiseSize;
+          fullRaise = true;
         }
         this.currentBet = player.bet;
       }
@@ -646,7 +724,7 @@ export class HoldemDemo {
       ts:Date.now()
     });
 
-    return player.bet > beforeBet && player.bet > beforeBet + legal.toCall;
+    return {fullRaise};
   }
 
   async botAction(player, legal){

@@ -15,11 +15,11 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
   const root=document.createElement('div');root.className='game-screen';
   document.body.appendChild(root);
   const players=(lobby.players||[]).map(p=>({nick:p.nick,type:p.type||'bot',style:p.style||''}));
-  let snapshot=null, resolveHero=null, lastHand=null, heroStart=0, tournamentResult=null, ending=false;
+  let snapshot=null, resolveHero=null, lastHand=null, heroStart=0, heroStartBB=lobby.stackBB||100, tournamentResult=null, ending=false, cancelled=false;
 
   const engine=new HoldemDemo({
     players,heroNick,stackBB:lobby.stackBB||100,smallBlind:50,bigBlind:100,levelSeconds:300,bigBlindAnte:true,
-    onChange:s=>{snapshot=s;render()},
+    onChange:s=>{if(!cancelled){snapshot=s;render()}},
     onHeroDecision:(legal,resolve)=>{resolveHero=resolve;renderDecision(legal)},
     onHandEnd:hand=>{lastHand=hand;setTimeout(()=>{if(!ending)showHandResult()},300)},
     onTournamentEnd:r=>{tournamentResult=r;ending=true;setTimeout(showTournamentResult,380)}
@@ -62,7 +62,17 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
     </div>
     <div class="action-log">${snapshot.log.map(x=>`<div>${x}</div>`).join('')}</div>
     <div class="decision-area" id="decisionArea"><div class="waiting-copy">Боты думают…</div></div>`;
-    root.querySelector('#leaveGame').onclick=()=>{if(confirm('Выйти из тестовой сессии?')){root.remove();onExit && onExit()}};
+    root.querySelector('#leaveGame').onclick=()=>{
+      if(confirm('Выйти из тестовой сессии?')){
+        cancelled=true;
+        const pending=resolveHero;
+        resolveHero=null;
+        if(pending) pending({type:'fold'});
+        engine.destroy();
+        root.remove();
+        onExit && onExit();
+      }
+    };
   }
   function renderDecision(legal){
     const area=root.querySelector('#decisionArea'); if(!area)return;
@@ -143,6 +153,10 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
         actions:(engine.sessionHands||[]).flatMap(h=>h.actions||[]),
         stackStart:heroStart,
         stackEnd:(hero && hero.stack)||0,
+        stackStartBB:heroStartBB,
+        stackEndBB:((hero && hero.stack)||0)/engine.baseBB,
+        chipDelta:((hero && hero.stack)||0)-heroStart,
+        chipDeltaBB:(((hero && hero.stack)||0)-heroStart)/engine.baseBB,
         lastHand,
         tournament:{
           ...tournamentResult,
@@ -151,7 +165,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
           finalSB:engine.sb,finalBB:engine.bb
         }
       };
-      overlay.remove();root.remove();onSessionEnd && onSessionEnd(payload);
+      engine.destroy();overlay.remove();root.remove();onSessionEnd && onSessionEnd(payload);
     };
   }
   engine.startHand();
