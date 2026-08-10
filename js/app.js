@@ -1,5 +1,5 @@
 import { analyzeSession } from './analytics/sessionAnalysis.js?v=160';
-import { mountPokerTable } from './tableUI.js?v=160';
+import { mountPokerTable } from './tableUI.js?v=161';
 
 import { state, saveState } from './state.js?v=160';
 import { makeBots } from './bots/botEngine.js?v=160';

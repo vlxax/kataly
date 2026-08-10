@@ -358,3 +358,9 @@ of `seat.el.querySelector`.
 - Board and pot stay in the center of a tall felt.
 - Hero strip and action controls are fixed to the lower phone area.
 - Desktop preview is constrained to a phone-width column instead of stretching into a horizontal table.
+
+
+## V1.6.1 ENGINE FIX
+- Полностью обновлена цепочка cache-busting: index → app → tableUI → tableController → tableView/engine.
+- Исправлен запуск старого закэшированного tableView с устаревшим seat.el DOM-контрактом.
+- Вертикальная геометрия стола V1.6 сохранена.
