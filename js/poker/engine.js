@@ -115,6 +115,7 @@ export class HoldemDemo {
     levelSeconds=300,
     bigBlindAnte=true,
     botDelayMs=180,
+    dealDelayMs=1500,
     onChange,
     onHeroDecision,
     onHandEnd,
@@ -128,6 +129,7 @@ export class HoldemDemo {
     this.ante = bigBlindAnte ? bigBlind : 0;
     this.bigBlindAnte = !!bigBlindAnte;
     this.botDelayMs = botDelayMs;
+    this.dealDelayMs = dealDelayMs;
 
     const startingStack = Math.round(stackBB * bigBlind);
 
@@ -170,6 +172,7 @@ export class HoldemDemo {
     this.pot = 0;
     this.board = [];
     this.street = 'waiting';
+    this.phase = 'waiting';
     this.currentBet = 0;
     this.lastFullRaise = bigBlind;
     this.currentActorSeat = null;
@@ -312,6 +315,7 @@ export class HoldemDemo {
       pot:this.pot,
       potBB:this.pot / this.bb,
       street:this.street,
+      phase:this.phase,
       handNo:this.handNo,
       currentBet:this.currentBet,
       button:this.button,
@@ -445,6 +449,7 @@ export class HoldemDemo {
     this.board = [];
     this.pot = 0;
     this.street = 'preflop';
+    this.phase = 'dealing';
     this.handActions = [];
     this.log = [];
     this.currentBet = 0;
@@ -504,6 +509,12 @@ export class HoldemDemo {
 
     this.emit();
 
+    // Real poker-room pacing: cards are visually dealt first,
+    // only after that does preflop action begin.
+    if(this.dealDelayMs > 0) await sleep(this.dealDelayMs);
+    this.phase = 'action';
+    this.emit();
+
     const preflopStart = live.length === 2
       ? sbIndex
       : this.nextLive(bbIndex);
@@ -512,31 +523,45 @@ export class HoldemDemo {
 
     if(this.liveInHand().length > 1){
       this.street = 'flop';
+      this.phase = 'board';
       this.resetStreet();
       this.burn();
       this.dealBoard(3);
       this.emit();
-      await this.bettingRound(this.firstPostflopActor());
+      await sleep(500);
+      this.phase = 'action';
+
     }
 
     if(this.liveInHand().length > 1){
       this.street = 'turn';
+      this.phase = 'board';
       this.resetStreet();
       this.burn();
       this.dealBoard(1);
+      this.emit();
+      await sleep(500);
+      this.phase = 'action';
       this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
 
     if(this.liveInHand().length > 1){
       this.street = 'river';
+      this.phase = 'board';
       this.resetStreet();
       this.burn();
       this.dealBoard(1);
       this.emit();
+      await sleep(500);
+      this.phase = 'action';
+      this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
 
+    this.phase = 'showdown';
+    this.emit();
+    await sleep(450);
     this.finishHand();
 
     if(!this.finished){

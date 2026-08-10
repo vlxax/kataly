@@ -465,3 +465,69 @@ button{cursor:pointer}
 @media(min-width:700px){
   .poker-room .room-shell{width:430px}
 }
+
+
+/* ===== V0.9.1 DEAL FLOW / STABLE TABLE ===== */
+.poker-room .room-shell{
+  display:block;
+  height:100dvh;
+  min-height:100dvh;
+  padding:0;
+  overflow:hidden;
+}
+.poker-room .room-topbar{
+  position:absolute;
+  left:10px;right:10px;
+  top:calc(8px + env(safe-area-inset-top));
+  height:48px;
+  z-index:40;
+}
+.poker-room .room-table-wrap{
+  position:absolute;
+  left:0;right:0;
+  top:calc(62px + env(safe-area-inset-top));
+  bottom:calc(206px + env(safe-area-inset-bottom));
+  min-height:0;
+}
+.poker-room .hero-zone{
+  position:absolute;
+  left:10px;right:10px;
+  bottom:calc(150px + env(safe-area-inset-bottom));
+  height:50px;
+  z-index:42;
+}
+.poker-room .room-controls{
+  position:absolute;
+  left:10px;right:10px;
+  bottom:calc(8px + env(safe-area-inset-bottom));
+  height:136px;
+  min-height:136px;
+  z-index:42;
+}
+.poker-room .room-history{
+  left:12px;
+  bottom:calc(205px + env(safe-area-inset-bottom));
+}
+.poker-room .room-felt{
+  left:8%;
+  right:8%;
+  top:4%;
+  bottom:4%;
+}
+.poker-room .room-seat{
+  transition:opacity .18s,filter .18s;
+}
+.poker-room .room-seat-cards{
+  min-height:28px;
+}
+.poker-room .deal-card{
+  animation:dealIn .16s ease-out both;
+  transform-origin:center;
+}
+@keyframes dealIn{
+  0%{opacity:0;transform:translateY(-12px) scale(.82) rotate(-4deg)}
+  100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}
+}
+.poker-room .room-waiting{
+  height:118px;
+}

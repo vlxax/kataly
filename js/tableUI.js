@@ -46,6 +46,9 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
   let cancelled=false;
   let tournamentResult=null;
   let handBannerTimer=null;
+  let dealHandNo=0;
+  let dealStartedAt=0;
+  let dealAnimTimer=null;
 
   const engine=new HoldemDemo({
     players,
@@ -55,10 +58,17 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
     bigBlind:100,
     levelSeconds:300,
     bigBlindAnte:true,
-    botDelayMs:260,
+    botDelayMs:900,
+    dealDelayMs:1700,
     onChange:s=>{
       if(cancelled)return;
+      const isNewHand = !snapshot || s.handNo !== snapshot.handNo;
       snapshot=s;
+      if(isNewHand){
+        dealHandNo=s.handNo;
+        dealStartedAt=Date.now();
+        startDealAnimationTicker();
+      }
       render();
     },
     onHeroDecision:(legal,resolve)=>{
@@ -119,6 +129,30 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
     return p.lastAction||'';
   }
 
+  function startDealAnimationTicker(){
+    if(dealAnimTimer) clearInterval(dealAnimTimer);
+    dealAnimTimer=setInterval(()=>{
+      if(cancelled){clearInterval(dealAnimTimer);dealAnimTimer=null;return;}
+      if(!snapshot || snapshot.phase!=='dealing'){
+        clearInterval(dealAnimTimer);dealAnimTimer=null;return;
+      }
+      render();
+    },90);
+  }
+
+  function dealtCardCountForSeat(seatIndex){
+    if(!snapshot || snapshot.phase!=='dealing') return 2;
+    const elapsed=Date.now()-dealStartedAt;
+    const n=snapshot.players.length;
+    const perCard=110;
+    const firstAt=seatIndex*perCard;
+    const secondAt=n*perCard + seatIndex*perCard;
+    let count=0;
+    if(elapsed>=firstAt) count=1;
+    if(elapsed>=secondAt) count=2;
+    return count;
+  }
+
   function render(){
     if(!snapshot)return;
 
@@ -170,7 +204,7 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
             return `<div class="room-seat ${heroSeat?'hero':''} ${acting?'acting':''} ${p.folded?'folded':''} ${p.out?'out':''}"
               style="left:${x}%;top:${y}%">
               <div class="room-seat-cards">
-                ${(p.hole||[]).map(c=>cardHTML(c,c==='XX',true)).join('')}
+                ${(p.hole||[]).slice(0,dealtCardCountForSeat(i)).map((c,ci)=>`<div class="deal-card deal-card-${ci}">${cardHTML(c,c==='XX',true)}</div>`).join('')}
               </div>
               <div class="room-avatar">${p.nick.slice(0,2).toUpperCase()}</div>
               <div class="room-playerbox">
@@ -187,14 +221,14 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
 
         <section class="hero-zone">
           <div class="hero-zone-left">
-            <div class="hero-zone-cards">${snapshot.heroHole.map(c=>cardHTML(c)).join('')}</div>
+            <div class="hero-zone-cards">${snapshot.heroHole.slice(0,dealtCardCountForSeat(snapshot.players.findIndex(p=>p.nick===heroNick))).map(c=>cardHTML(c)).join('')}</div>
             <div class="hero-zone-info">
               <span>${hero?hero.position:'—'} · EFFECTIVE ${bb(effective/snapshot.bb)} BB</span>
               <b>${hero?money(hero.stack):0} · ${hero?bb(hero.stackBB):0} BB</b>
             </div>
           </div>
           <div class="hero-status ${heroTurn?'your-turn':''}">
-            ${heroTurn?`ТВОЙ ХОД · <b id="decisionSeconds">${actionSeconds}</b>s`:`${snapshot.currentActorNick?`${snapshot.currentActorNick} думает…`:'РАЗДАЧА'}`}
+            ${snapshot.phase==='dealing'?'РАЗДАЁМ КАРТЫ…':heroTurn?`ТВОЙ ХОД · <b id="decisionSeconds">${actionSeconds}</b>s`:`${snapshot.currentActorNick?`${snapshot.currentActorNick} думает…`:'ЖДЁМ ХОДА'}`}
           </div>
         </section>
 
@@ -217,9 +251,12 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
   }
 
   function waitingHTML(){
+    let text='Ждём следующего действия';
+    if(snapshot&&snapshot.phase==='dealing') text='Карты раздаются по столу';
+    else if(snapshot&&snapshot.currentActorNick) text=`${snapshot.currentActorNick} принимает решение`;
     return `<div class="room-waiting">
       <div class="room-wait-dot"></div>
-      <span>${snapshot&&snapshot.currentActorNick?`${snapshot.currentActorNick} принимает решение`:'Ждём следующего действия'}</span>
+      <span>${text}</span>
     </div>`;
   }
 
@@ -272,6 +309,7 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
       if(confirm('Выйти из сессии?')){
         cancelled=true;
         stopDecisionTimer();
+        if(dealAnimTimer){clearInterval(dealAnimTimer);dealAnimTimer=null;}
         if(pendingResolve){
           const r=pendingResolve;pendingResolve=null;pendingLegal=null;
           r({type:'fold'});
@@ -419,6 +457,7 @@ export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
     if(!tournamentResult||cancelled)return;
     engine.destroy();
     stopDecisionTimer();
+    if(dealAnimTimer){clearInterval(dealAnimTimer);dealAnimTimer=null;}
     const hero=engine.hero();
     const place=tournamentResult.heroPlace||engine.active().length;
     const prize=payoutFor(place,engine.players.length,lobby.buyIn);
