@@ -227,7 +227,7 @@ export class TableView{
         card.style.opacity='.22';
       });
     }
-    this.flashAction(seat,1200);
+    this.flashAction(seat,2200);
   }
 
   flashAction(seat,ms){

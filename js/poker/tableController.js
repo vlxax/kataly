@@ -44,6 +44,16 @@ export class TableController{
 
   bindStatic(){
     this.root.querySelector('#v1Exit').onclick=()=>this.exit();
+    const speedBtn=this.root.querySelector('#v1Speed');
+    if(speedBtn){
+      speedBtn.onclick=()=>{
+        const modes=[['REG',1],['СПОКОЙНО',1.45],['УЧЕБА',1.9]];
+        const cur=Number(localStorage.getItem('kataly_speed')||1.45);
+        let idx=modes.findIndex(x=>x[1]===cur);idx=(idx+1)%modes.length;
+        localStorage.setItem('kataly_speed',String(modes[idx][1]));
+        speedBtn.textContent='⏱ '+modes[idx][0];
+      };
+    }
     this.root.querySelector('#v1Tournament').onclick=()=>{
       const s=this.lastSnapshot;if(!s)return;
       const old=this.root.querySelector('.v1-info-pop');if(old){old.remove();return;}
@@ -61,11 +71,11 @@ export class TableController{
     clearInterval(this.turnTimer);
     const seat=this.view.seats.get(e.seat);
     if(!seat)return;
-    let left=18;
+    let left=25;
     seat.ring.style.setProperty('--turn-progress','1');
     this.turnTimer=setInterval(()=>{
       left--;
-      seat.ring.style.setProperty('--turn-progress',String(Math.max(0,left/18)));
+      seat.ring.style.setProperty('--turn-progress',String(Math.max(0,left/25)));
       if(left<=0){
         clearInterval(this.turnTimer);
         if(e.nick===this.heroNick && this.pendingResolve && this.pendingLegal){

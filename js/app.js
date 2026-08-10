@@ -54,7 +54,7 @@ function renderHome(){
       <h1>Сел.<br>Играешь.</h1>
       <p>6-max MTT · 50 BB · BB Ante. Пять ботов садятся автоматически. Сейчас тестируем сам покерный стол.</p>
       <div class="actions actions-single">
-        <button class="btn btn-primary" id="playNow">БЫСТРАЯ СЕССИЯ · 6-MAX</button>
+        <button class="btn btn-primary" id="playNow">СЕССИЯ · 6-MAX · 50 BB</button>
         <button class="btn btn-secondary" id="inviteFriends">СОБРАТЬ СТОЛ С ДРУЗЬЯМИ</button>
       </div>
     </section>

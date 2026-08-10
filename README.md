@@ -288,3 +288,20 @@ Fast reg-focused pass:
 - Preflop sizing presets differ from postflop presets.
 - Tournament HUD has real info instead of an alert.
 - Decision history stores pot-before and decision time.
+
+## V1.2 — REG TIMING / READABILITY
+- Hand choreography slowed substantially so actions can be followed.
+- Hero decision clock increased to 25 seconds.
+- Action badges stay visible longer.
+- Acting player is visually stronger.
+- Bet/pot hierarchy is cleaner.
+- 6-max 50BB test path retained.
+- No core betting rules were removed or simplified in this pass.
+
+
+## V1.2.1 — HTML BOOT FIX
+- Переписан `index.html`.
+- Убран dynamic `import()` из inline module bootstrap.
+- При открытии через `file://` Safari больше не показывает ложный BOOT ERROR: теперь объясняет, что ES modules должны запускаться через GitHub Pages / http(s).
+- Через GitHub Pages `app.js` загружается обычным `<script type="module" src="...">`.
+- Добавлен cache-bust `v=121-html-boot-fix`.

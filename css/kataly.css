@@ -637,3 +637,28 @@ button{cursor:pointer}
 .v1-info-pop{position:absolute;z-index:120;top:calc(60px + env(safe-area-inset-top));right:10px;width:190px;padding:12px;border-radius:14px;
  background:rgba(16,18,23,.96);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 50px rgba(0,0,0,.45)}
 .v1-info-pop b{display:block;font-size:10px;margin-bottom:7px}.v1-info-pop span{display:block;font-size:7px;color:#aaa3ab;line-height:1.6}
+
+/* ===== V1.2 REG TIMING / READABILITY PASS ===== */
+.v1-room .v1-action.show{animation:none!important;opacity:1!important;transform:translateY(0)!important}
+.v1-room .v1-action{padding:4px 7px;border-radius:7px;background:rgba(8,9,12,.94);border:1px solid rgba(255,255,255,.13);
+ box-shadow:0 5px 16px rgba(0,0,0,.35);font-weight:800;letter-spacing:.02em}
+.v1-room .v1-action.player_raised,.v1-room .v1-action.player_allin{border-color:rgba(255,46,125,.55);color:#ff6fa5}
+.v1-room .v1-action.player_called{color:#f3f0f2}
+.v1-room .v1-action.player_checked{color:#aaa4ab}
+.v1-room .v1-action.player_folded{color:#777178}
+.v1-room .v1-bet.show{background:rgba(5,6,8,.86);padding:3px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.07)}
+.v1-room .v1-pot{background:rgba(5,7,8,.88);border:1px solid rgba(255,255,255,.08);box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.v1-room .v1-pot small{letter-spacing:.12em}
+.v1-speed{height:28px;padding:0 8px;border-radius:9px;border:1px solid rgba(255,255,255,.09);background:#101217;color:#aaa3ab;
+ font-size:7px;font-weight:800;white-space:nowrap}
+.v1-room .v1-player.active .v1-playerbox{border-color:rgba(255,46,125,.68);box-shadow:0 0 0 1px rgba(255,46,125,.16),0 0 22px rgba(255,46,125,.12)}
+.v1-room .v1-player.active .v1-avatar{box-shadow:0 0 0 2px #ff2e7d,0 0 14px rgba(255,46,125,.35)}
+.v1-room .v1-board-card{box-shadow:0 7px 16px rgba(0,0,0,.3)}
+.v1-room .v1-hero-strip{background:linear-gradient(180deg,rgba(5,6,8,.2),rgba(5,6,8,.94))}
+.v1-room .v1-waiting b{display:block;margin-bottom:5px}
+@media (max-width:430px){
+ .v1-room .v1-table-stage{bottom:205px}
+ .v1-room .v1-playerbox{min-width:78px}
+ .v1-room .v1-main-actions{gap:6px}
+ .v1-room .v1-main-actions button{font-size:10px}
+}
