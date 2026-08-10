@@ -38,218 +38,149 @@ function shell(content){
 function renderHome(){
   const incoming = state.invites.filter(x=>x.direction==='in' && x.status==='pending').slice(0,2);
   shell(`
-    <section class="hero">
-      <div class="eyebrow">NL HOLD'EM · БОТЫ + РЕАЛЬНЫЕ ИГРОКИ</div>
-      <h1>Собери стол.<br>Остальных добьём ботами.</h1>
-      <p>6-max или 9-max. Зови друзей по инвайту, запускай сессию даже если никто не пришёл. Все твои действия позже пойдут в разбор Poker Brain.</p>
-      <div class="actions">
-        <button class="btn btn-primary" id="createTable">СОЗДАТЬ СТОЛ</button>
-        <button class="btn btn-secondary" id="botTable">СЕСТЬ С БОТАМИ</button>
+    <section class="hero hero-clean">
+      <div class="eyebrow">КАТАЛЫ · NL HOLD'EM</div>
+      <h1>Сел.<br>Играешь.</h1>
+      <p>Выбирай 6-max или 9-max. Хочешь — зови друзей. Все свободные места автоматически займут боты.</p>
+      <div class="actions actions-single">
+        <button class="btn btn-primary" id="playNow">ИГРАТЬ</button>
+        <button class="btn btn-secondary" id="inviteFriends">ПРИГЛАСИТЬ ДРУЗЕЙ</button>
       </div>
     </section>
 
-    <div class="section-head"><h2>Входящие</h2><span>${incoming.length?'можно принять':'пока тихо'}</span></div>
-    <div id="incomingList">
-      ${incoming.length ? incoming.map(i=>`
-        <div class="card invite">
-          <div class="avatar">${i.from.slice(0,2).toUpperCase()}</div>
-          <div><h3>${i.from}</h3><p>${i.format} · ${i.seats} мест · бай-ин ${money(i.buyIn)}</p></div>
-          <button class="btn btn-secondary" data-accept="${i.id}" style="padding:9px 10px">СЕСТЬ</button>
-        </div>
-      `).join('') : `<div class="card empty">Инвайтов нет. Можешь создать свой стол и позвать друга.</div>`}
+    <div class="section-head"><h2>Твой стол</h2><span>можно стартовать одному</span></div>
+    <div class="card quick-table">
+      <div class="quick-row"><span>Формат</span><b>6-max / 9-max</b></div>
+      <div class="quick-row"><span>Реальные игроки</span><b>от 1</b></div>
+      <div class="quick-row"><span>Свободные места</span><b class="pink">заполнят боты</b></div>
+      <div class="quick-row"><span>После игры</span><b>статистика + разбор</b></div>
     </div>
 
-    <div class="section-head"><h2>Как это работает</h2><span>V0.1</span></div>
-    <div class="card table-preview">
-      <div class="eyebrow">ПРИМЕР · 6-MAX</div>
-      <div class="table-visual">
-        <div class="seat s1"><div class="avatar" style="width:34px;height:34px;border-radius:11px">LR</div><div class="chip">Лера · 100 BB</div></div>
-        <div class="seat s2"><div class="avatar bot" style="width:34px;height:34px;border-radius:11px">GT</div><div class="chip bot">GTO_Monkey</div></div>
-        <div class="seat s3"><div class="avatar bot" style="width:34px;height:34px;border-radius:11px">NK</div><div class="chip bot">NitKing</div></div>
-        <div class="seat s4"><div class="avatar" style="width:34px;height:34px;border-radius:11px">FR</div><div class="chip">Друг · real</div></div>
-        <div class="seat s5"><div class="avatar bot" style="width:34px;height:34px;border-radius:11px">BD</div><div class="chip bot">BluffDaddy</div></div>
-        <div class="seat s6"><div class="avatar bot" style="width:34px;height:34px;border-radius:11px">CS</div><div class="chip bot">CallingStation</div></div>
-        <div class="table-center"><div><b>2 реальных + 4 бота</b><span>недостающие места заполняются автоматически</span></div></div>
-      </div>
-    </div>
+    <div class="section-head"><h2>Входящие</h2><span>${incoming.length?'есть приглашения':'пока тихо'}</span></div>
+    ${incoming.length ? incoming.map(i=>`
+      <div class="card invite">
+        <div class="avatar">${i.from.slice(0,2).toUpperCase()}</div>
+        <div><h3>${i.from}</h3><p>${i.seats}-max · бай-ин ${money(i.buyIn)}</p></div>
+        <button class="btn btn-secondary mini" data-accept="${i.id}">СЕСТЬ</button>
+      </div>`).join('') : `<div class="card empty">Тебя пока никуда не зовут. Трагедия отменяется — стол всё равно соберут боты.</div>`}
   `);
-
-  $('#createTable').onclick=()=>{state.view='players';saveState();render();};
-  $('#botTable').onclick=()=>openCreate(true);
+  $('#playNow').onclick=()=>openGameSetup();
+  $('#inviteFriends').onclick=()=>openGameSetup(true);
   document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{
     const inv=state.invites.find(x=>x.id===b.dataset.accept);
-    if(inv){ inv.status='accepted'; saveState(); toast('Инвайт принят. Лобби создано.'); openLobby(createLobby({host:inv.from, seats:inv.seats, format:inv.format, buyIn:inv.buyIn, realPlayers:[state.nick, inv.from]}));}
+    if(!inv) return;
+    inv.status='accepted'; saveState();
+    openLobby(createLobby({host:inv.from,seats:inv.seats,format:inv.format,buyIn:inv.buyIn,stackBB:100,realPlayers:[state.nick,inv.from]}));
   });
 }
 
-function openCreate(botOnly=false){
+function openGameSetup(focusInvite=false){
   const wrap=document.createElement('div');
   wrap.className='modal-backdrop';
-  wrap.innerHTML=`<div class="sheet">
-    <div class="eyebrow">${botOnly?'БЫСТРАЯ ИГРА':'СОЗДАТЬ СТОЛ'}</div>
-    <h2>${botOnly?'Сесть и играть':'Настрой свою катку'}</h2>
-    <p>${botOnly?'Ты один реальный игрок. Остальные места сразу займут боты.':'Можно позвать сколько угодно людей. Незанятые места при старте заполнят боты.'}</p>
+  wrap.innerHTML=`<div class="sheet lobby-setup">
+    <div class="sheet-handle"></div>
+    <div class="eyebrow">НОВАЯ ИГРА</div>
+    <h2>Собираем стол</h2>
+    <p>Никого ждать не надо. Приглашай хоть 2, хоть 3, хоть 5 друзей — остальные места займут боты.</p>
 
-    <div class="field"><label>ФОРМАТ СТОЛА</label>
-      <div class="option-grid">
-        <button class="option active" data-seats="6"><b>6-MAX</b><span>быстрее, больше экшена</span></button>
-        <button class="option" data-seats="9"><b>9-MAX</b><span>полный стол</span></button>
+    <div class="field"><label>ФОРМАТ</label>
+      <div class="segmented">
+        <button class="seg active" data-seats="6">6-MAX</button>
+        <button class="seg" data-seats="9">9-MAX</button>
       </div>
     </div>
 
     <div class="field"><label>БАЙ-ИН</label>
-      <div class="option-grid">
-        <button class="option active" data-buyin="1000"><b>1 000 🪙</b><span>базовый стол</span></button>
-        <button class="option" data-buyin="5000"><b>5 000 🪙</b><span>дороже и больнее</span></button>
+      <div class="chip-options">
+        <button class="chip-option active" data-buyin="1000">1K</button>
+        <button class="chip-option" data-buyin="5000">5K</button>
+        <button class="chip-option" data-buyin="10000">10K</button>
+        <button class="chip-option" data-buyin="25000">25K</button>
       </div>
     </div>
 
-    <div class="field"><label>СТАРТОВЫЙ СТЕК</label>
-      <div class="option-grid">
-        <button class="option active" data-stack="100"><b>100 BB</b><span>стандарт</span></button>
-        <button class="option" data-stack="50"><b>50 BB</b><span>быстрее</span></button>
-      </div>
+    <div class="game-meta">
+      <div><span>Стек</span><b>100 BB</b></div>
+      <div><span>Блайнды</span><b>50 / 100</b></div>
+      <div><span>Темп</span><b>Обычный</b></div>
     </div>
 
-    ${botOnly?'':`<div class="field"><label>ПОЗВАТЬ ДРУГА</label><input id="friendNick" placeholder="Ник игрока, например GTO_Monkey"></div>`}
+    <div class="section-head compact"><h2>Участники <span id="seatCounter">1/6</span></h2><span id="botCounter">5 ботов</span></div>
+    <div id="seatList" class="seat-list"></div>
 
-    <button class="btn btn-primary" id="buildLobby" style="width:100%">${botOnly?'СОБРАТЬ СТОЛ':'СОЗДАТЬ ЛОББИ'}</button>
-    <button class="btn btn-secondary" id="closeSheet" style="width:100%;margin-top:8px">ОТМЕНА</button>
+    <div class="invite-box">
+      <input id="friendNick" placeholder="Ник друга">
+      <button id="addFriend" class="btn btn-secondary mini">+ ДОБАВИТЬ</button>
+    </div>
+    <div class="hint">Это демо-инвайт. Настоящий онлайн-мультиплеер подключим после игрового движка.</div>
+
+    <button class="btn btn-primary" id="goLobby" style="width:100%;margin-top:16px">ПРОДОЛЖИТЬ</button>
+    <button class="btn btn-ghost" id="closeSheet" style="width:100%">ОТМЕНА</button>
   </div>`;
   document.body.appendChild(wrap);
 
-  let seats=6,buyIn=1000,stack=100;
-  wrap.querySelectorAll('[data-seats]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-seats]').forEach(x=>x.classList.remove('active'));b.classList.add('active');seats=+b.dataset.seats});
-  wrap.querySelectorAll('[data-buyin]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-buyin]').forEach(x=>x.classList.remove('active'));b.classList.add('active');buyIn=+b.dataset.buyin});
-  wrap.querySelectorAll('[data-stack]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-stack]').forEach(x=>x.classList.remove('active'));b.classList.add('active');stack=+b.dataset.stack});
-  $('#closeSheet').onclick=()=>wrap.remove();
-  $('#buildLobby').onclick=()=>{
-    const friend=botOnly?'':($('#friendNick')?.value||'').trim();
-    if(buyIn>state.wallet){toast('Не хватает внутренней валюты');return}
-    const realPlayers=[state.nick];
-    if(friend) realPlayers.push(friend);
-    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:stack,realPlayers});
-    if(friend){
-      state.invites.unshift(createInvite({from:state.nick,to:friend,seats,buyIn,format:'NL Hold’em'}));
-      saveState();
-    }
+  let seats=6,buyIn=1000;
+  const friends=[];
+  const seatList=wrap.querySelector('#seatList');
+  const renderSeats=()=>{
+    const real=[state.nick,...friends];
+    const botCount=Math.max(0,seats-real.length);
+    wrap.querySelector('#seatCounter').textContent=`${real.length}/${seats}`;
+    wrap.querySelector('#botCounter').textContent=`${botCount} ${botCount===1?'бот':'ботов'}`;
+    seatList.innerHTML=`
+      ${real.map((nick,i)=>`<div class="player-slot real-slot"><div class="avatar small">${nick.slice(0,2).toUpperCase()}</div><div><b>${nick}</b><span>${i===0?'Ты · место гарантировано':'Друг · приглашён'}</span></div><em>REAL</em></div>`).join('')}
+      ${Array.from({length:botCount},(_,i)=>`<div class="player-slot bot-slot"><div class="avatar small bot-avatar">B${i+1}</div><div><b>Свободное место</b><span>при старте сядет бот</span></div><em>BOT</em></div>`).join('')}`;
+  };
+  renderSeats();
+  wrap.querySelectorAll('[data-seats]').forEach(b=>b.onclick=()=>{
+    wrap.querySelectorAll('[data-seats]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); seats=+b.dataset.seats;
+    while(friends.length>seats-1) friends.pop(); renderSeats();
+  });
+  wrap.querySelectorAll('[data-buyin]').forEach(b=>b.onclick=()=>{
+    wrap.querySelectorAll('[data-buyin]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); buyIn=+b.dataset.buyin;
+  });
+  wrap.querySelector('#addFriend').onclick=()=>{
+    const input=wrap.querySelector('#friendNick'); const nick=input.value.trim();
+    if(!nick) return toast('Введи ник друга');
+    if(friends.length>=seats-1) return toast('Стол уже заполнен');
+    if(friends.some(x=>x.toLowerCase()===nick.toLowerCase())) return toast('Он уже приглашён');
+    friends.push(nick); input.value='';
+    state.invites.unshift(createInvite({from:state.nick,to:nick,seats,buyIn,format:'NL Hold’em'})); saveState(); renderSeats(); toast('Инвайт отправлен');
+  };
+  wrap.querySelector('#closeSheet').onclick=()=>wrap.remove();
+  wrap.querySelector('#goLobby').onclick=()=>{
+    if(buyIn>state.wallet) return toast('Не хватает внутренней валюты');
+    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});
     wrap.remove(); openLobby(lobby);
   };
+  if(focusInvite) setTimeout(()=>wrap.querySelector('#friendNick').focus(),100);
 }
 
 function openLobby(lobby){
   const bots=makeBots(Math.max(0,lobby.seats-lobby.realPlayers.length));
-  lobby.players=[
-    ...lobby.realPlayers.map((nick,i)=>({nick,type:'real',host:i===0})),
-    ...bots.map(b=>({nick:b.name,type:'bot',style:b.style}))
-  ];
-
-  const wrap=document.createElement('div');wrap.className='modal-backdrop';
-  wrap.innerHTML=`<div class="sheet">
-    <div class="eyebrow">ЛОББИ · ${lobby.seats}-MAX</div>
-    <h2>${lobby.format}</h2>
-    <p>Бай-ин ${money(lobby.buyIn)} · стартовый стек ${lobby.stackBB} BB · призовой фонд ${money(lobby.buyIn*lobby.seats)}</p>
-    <div class="card" style="padding:4px 14px;margin:14px 0">
-      ${lobby.players.map((p,i)=>`<div class="lobby-seat">
-        <div class="avatar" style="width:38px;height:38px;border-radius:12px">${p.nick.slice(0,2).toUpperCase()}</div>
-        <div><b>${p.nick}${p.host?' · HOST':''}</b><span>${p.type==='real'?'реальный игрок':p.style}</span></div>
-        <div class="tag ${p.type}">${p.type==='real'?'REAL':'BOT'}</div>
-      </div>`).join('')}
+  lobby.players=[...lobby.realPlayers.map((nick,i)=>({nick,type:'real',host:i===0})),...bots.map(b=>({nick:b.name,type:'bot',style:b.style}))];
+  const prize=lobby.buyIn*lobby.seats;
+  const wrap=document.createElement('div'); wrap.className='modal-backdrop';
+  wrap.innerHTML=`<div class="sheet lobby-final">
+    <div class="sheet-handle"></div>
+    <div class="lobby-title"><div><div class="eyebrow">ЛОББИ · ${lobby.seats}-MAX</div><h2>Стол готов</h2></div><div class="live-dot">● READY</div></div>
+    <div class="prize-card"><span>ПРИЗОВОЙ ФОНД</span><b>${money(prize)}</b><small>бай-ин ${money(lobby.buyIn)} · стек ${lobby.stackBB} BB</small></div>
+    <div class="poker-table-mini">
+      ${lobby.players.map((p,i)=>`<div class="mini-seat seat-${i+1}"><div class="avatar small ${p.type==='bot'?'bot-avatar':''}">${p.nick.slice(0,2).toUpperCase()}</div><b>${p.nick}</b><span>${p.type==='real'?'REAL':'BOT'}</span></div>`).join('')}
+      <div class="felt-copy"><b>${lobby.seats}-MAX</b><span>50 / 100</span></div>
     </div>
-    <button class="btn btn-primary" id="startDemo" style="width:100%">НАЧАТЬ СЕССИЮ</button>
-    <button class="btn btn-secondary" id="leaveLobby" style="width:100%;margin-top:8px">ВЫЙТИ</button>
+    <div class="lobby-summary"><div><span>Людей</span><b>${lobby.realPlayers.length}</b></div><div><span>Ботов</span><b>${bots.length}</b></div><div><span>Мест</span><b>${lobby.seats}</b></div></div>
+    <button class="btn btn-primary" id="startDemo" style="width:100%">СЕСТЬ ЗА СТОЛ</button>
+    <button class="btn btn-ghost" id="leaveLobby" style="width:100%">НАЗАД</button>
   </div>`;
   document.body.appendChild(wrap);
-  $('#leaveLobby').onclick=()=>wrap.remove();
-  $('#startDemo').onclick=()=>{
-    if(lobby.buyIn>state.wallet){toast('Не хватает внутренней валюты');return}
+  wrap.querySelector('#leaveLobby').onclick=()=>wrap.remove();
+  wrap.querySelector('#startDemo').onclick=()=>{
+    if(lobby.buyIn>state.wallet) return toast('Не хватает внутренней валюты');
     state.wallet-=lobby.buyIn;
-    const session=createSessionRecord(lobby);
-    state.history.unshift(session);saveState();
-    wrap.remove();toast('V0.1: сессия создана. Сам покерный движок будет в V0.2.');
-    state.view='history';saveState();render();
-  };
-}
-
-
-const DEMO_PLAYERS = [
-  {nick:'GTO_Monkey',level:26,type:'Регуляр',avatar:'GT'},
-  {nick:'AK_Shooter',level:19,type:'Агрессор',avatar:'AK'},
-  {nick:'Fish_Whisperer',level:15,type:'Любитель',avatar:'FW'},
-  {nick:'Bluff_Queen',level:31,type:'Профи',avatar:'BQ'},
-  {nick:'NitOnline',level:22,type:'Регуляр',avatar:'NO'},
-  {nick:'RiverPolice',level:18,type:'Дисциплина',avatar:'RP'},
-  {nick:'PohuiCall',level:14,type:'Любопытный',avatar:'PC'}
-];
-
-function renderPlayers(){
-  const selected = new Set();
-  shell(`
-    <div class="players-head">
-      <button class="back-btn" id="playersBack">‹</button>
-      <div><h1>ИГРОКИ</h1><p>Собери компанию. Пустые места займут боты.</p></div>
-    </div>
-    <div class="tabs"><button class="tab active">ИГРОКИ</button><button class="tab" data-go-invites>ПРИГЛАШЕНИЯ</button><button class="tab" data-go-history>ИСТОРИЯ</button></div>
-    <input class="search" id="playerSearch" placeholder="⌕  Поиск игрока" autocomplete="off">
-    <div class="online-title"><span>ОНЛАЙН</span><b>${DEMO_PLAYERS.length}</b></div>
-    <div class="card" style="padding:3px 13px" id="playerList"></div>
-    <div class="table-builder" id="tableBuilder">
-      <div class="builder-top"><b>ТВОЙ СТОЛ · <span id="seatCount" style="color:white">1/6</span></b><span id="botCount">+ 5 ботов при старте</span></div>
-      <div class="builder-people" id="builderPeople"></div>
-      <div class="builder-actions"><button class="btn btn-secondary" id="botsNow">СРАЗУ С БОТАМИ</button><button class="btn btn-primary" id="continueTable">НАСТРОИТЬ СТОЛ</button></div>
-    </div>
-  `);
-
-  const list=$('#playerList'), search=$('#playerSearch');
-  function drawList(){
-    const q=search.value.trim().toLowerCase();
-    const rows=DEMO_PLAYERS.filter(p=>p.nick.toLowerCase().includes(q)||p.type.toLowerCase().includes(q));
-    list.innerHTML=rows.length?rows.map(p=>`<div class="player-row">
-      <div class="avatar" style="width:42px;height:42px;border-radius:13px">${p.avatar}</div>
-      <div class="player-info"><h3><span class="online-dot"></span>${p.nick}</h3><p>Уровень ${p.level} · ${p.type}</p></div>
-      <button class="invite-btn ${selected.has(p.nick)?'invited':''}" data-player="${p.nick}">${selected.has(p.nick)?'ПРИГЛАШЁН':'ПРИГЛАСИТЬ'}</button>
-    </div>`).join(''):'<div class="empty">Никого не нашли.</div>';
-    list.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>{
-      const nick=b.dataset.player;
-      if(selected.has(nick)) selected.delete(nick); else if(selected.size<5) selected.add(nick); else return toast('Для 6-max уже достаточно игроков');
-      drawList();drawBuilder();
-    });
-  }
-  function drawBuilder(){
-    const real=[state.nick,...selected];
-    $('#seatCount').textContent=`${real.length}/6`;
-    $('#botCount').textContent=real.length<6?`+ ${6-real.length} ${real.length===5?'бот':'ботов'} при старте`:'стол заполнен';
-    $('#builderPeople').innerHTML=[...real.map(n=>`<div class="mini-avatar">${n.slice(0,2).toUpperCase()}</div>`),...Array(6-real.length).fill(0).map(()=>`<div class="mini-avatar empty">BOT</div>`)].join('');
-  }
-  search.oninput=drawList; drawList();drawBuilder();
-  $('#playersBack').onclick=()=>{state.view='home';saveState();render()};
-  document.querySelector('[data-go-invites]').onclick=()=>{state.view='invites';saveState();render()};
-  document.querySelector('[data-go-history]').onclick=()=>{state.view='history';saveState();render()};
-  $('#botsNow').onclick=()=>openCreate(true);
-  $('#continueTable').onclick=()=>openCreateWithPlayers([...selected]);
-}
-
-function openCreateWithPlayers(selectedPlayers=[]){
-  const wrap=document.createElement('div');wrap.className='modal-backdrop';
-  wrap.innerHTML=`<div class="sheet">
-    <div class="eyebrow">ШАГ 2 · НАСТРОЙКИ СТОЛА</div><h2>Почти погнали.</h2>
-    <p>${selectedPlayers.length?`Ты позвала: ${selectedPlayers.join(', ')}. Остальные места при старте займут боты.`:'Ты пока никого не позвала — значит, боты сегодня твои лучшие друзья.'}</p>
-    <div class="field"><label>ФОРМАТ</label><div class="option-grid"><button class="option active" data-seats="6"><b>6-MAX</b><span>быстрее и агрессивнее</span></button><button class="option" data-seats="9"><b>9-MAX</b><span>полный стол</span></button></div></div>
-    <div class="field"><label>БАЙ-ИН</label><div class="option-grid"><button class="option active" data-buyin="1000"><b>1 000 🪙</b><span>базовый</span></button><button class="option" data-buyin="5000"><b>5 000 🪙</b><span>уже неприятно</span></button></div></div>
-    <div class="field"><label>СТАРТОВЫЙ СТЕК</label><div class="option-grid"><button class="option active" data-stack="100"><b>100 BB</b><span>стандарт</span></button><button class="option" data-stack="50"><b>50 BB</b><span>быстрая сессия</span></button></div></div>
-    <button class="btn btn-primary" id="buildSelectedLobby" style="width:100%">ПЕРЕЙТИ В ЛОББИ</button><button class="btn btn-secondary" id="closeSelected" style="width:100%;margin-top:8px">НАЗАД</button>
-  </div>`;
-  document.body.appendChild(wrap);
-  let seats=6,buyIn=1000,stack=100;
-  wrap.querySelectorAll('[data-seats]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-seats]').forEach(x=>x.classList.remove('active'));b.classList.add('active');seats=+b.dataset.seats});
-  wrap.querySelectorAll('[data-buyin]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-buyin]').forEach(x=>x.classList.remove('active'));b.classList.add('active');buyIn=+b.dataset.buyin});
-  wrap.querySelectorAll('[data-stack]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-stack]').forEach(x=>x.classList.remove('active'));b.classList.add('active');stack=+b.dataset.stack});
-  $('#closeSelected').onclick=()=>wrap.remove();
-  $('#buildSelectedLobby').onclick=()=>{
-    if(buyIn>state.wallet)return toast('Не хватает внутренней валюты');
-    const maxFriends=Math.max(0,seats-1), friends=selectedPlayers.slice(0,maxFriends);
-    friends.forEach(friend=>state.invites.unshift(createInvite({from:state.nick,to:friend,seats,buyIn,format:'NL Hold’em'})));
-    saveState();wrap.remove();openLobby(createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:stack,realPlayers:[state.nick,...friends]}));
+    const session=createSessionRecord(lobby); session.playerCount=lobby.seats; session.status='ready-for-engine';
+    state.history.unshift(session); saveState(); wrap.remove();
+    toast('Лобби работает. Следующий этап — игровой стол.'); state.view='history'; saveState(); render();
   };
 }
 
@@ -296,7 +227,6 @@ function renderStats(){
 }
 
 function render(){
-  if(state.view==='players') return renderPlayers();
   if(state.view==='invites') return renderInvites();
   if(state.view==='history') return renderHistory();
   if(state.view==='stats') return renderStats();
