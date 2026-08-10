@@ -124,3 +124,11 @@
 - Удалены ВСЕ optional chaining `?.` и nullish coalescing `??`.
 - Убраны `flatMap` из критического пути.
 - Цель: совместимость со старым Safari/WebKit, а не только современным Chrome.
+
+
+## V0.7.5 — ENGINE PARSE FIX
+- Найдена реальная причина Safari BOOT ERROR.
+- В `js/poker/engine.js`, функция `botAction()`, у третьего `return {type:'raise'...}` не хватало одной закрывающей `)`.
+- Из-за этого следующий `return` воспринимался Safari как синтаксическая ошибка.
+- `botAction()` переписан многострочно, чтобы такая ошибка больше не пряталась в одной гигантской строке.
+- Добавлен cache-bust `app.js?v=075-engine-parse-fix`.
