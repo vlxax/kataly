@@ -50,13 +50,13 @@ export class TableView{
 
         <div class="v1-hero-strip">
           <div id="v1HeroCards" class="v1-hero-cards"></div>
-          <div class="v1-hero-meta"><span id="v1HeroPos">—</span><b id="v1HeroStack">—</b></div>
-          <div id="v1TurnStatus" class="v1-turn-status">РАЗДАЧА</div>
+          <div class="v1-hero-meta">
+            <span id="v1HeroPos" class="v1-hero-position">POSITION —</span>
+            <b id="v1HeroStack">—</b>
+          </div>
         </div>
 
-        <div id="v1Controls" class="v1-controls">
-          <div class="v1-waiting">Ждём раздачу</div>
-        </div>
+        <div id="v1Controls" class="v1-controls v1-controls-hidden"></div>
       </div>`;
 
     const seatWrap=this.root.querySelector('#v1Seats');
@@ -124,8 +124,8 @@ export class TableView{
 
     const hero=s.players.find(p=>p.nick===this.heroNick);
     if(hero){
-      this.root.querySelector('#v1HeroPos').textContent=`${hero.position||'—'} · EFFECTIVE ${bb(s.heroStackBB)} BB`;
-      this.root.querySelector('#v1HeroStack').textContent=`${bb(s.heroStackBB)} BB`;
+      this.root.querySelector('#v1HeroPos').textContent=`POSITION ${hero.position||'—'} · ${bb(s.heroStackBB)} BB`;
+      this.root.querySelector('#v1HeroStack').textContent=`STACK ${money(hero.stack)}`;
     }
   }
 
@@ -210,9 +210,6 @@ export class TableView{
   setTurn(e){
     this.seats.forEach(s=>s.ring.classList.remove('show'));
     const seat=this.seats.get(e.seat);if(seat)seat.ring.classList.add('show');
-    this.root.querySelector('#v1TurnStatus').textContent=
-      e.nick===this.heroNick?'ТВОЙ ХОД':`${e.nick} думает…`;
-    this.root.querySelector('#v1TurnStatus').classList.toggle('hero',e.nick===this.heroNick);
   }
 
   showPlayerAction(type,e){
@@ -269,17 +266,23 @@ export class TableView{
     setTimeout(()=>banner.classList.remove('show'),2800);
   }
 
-  showWaiting(text='Ждём действия'){
-    this.root.querySelector('#v1Controls').innerHTML=`<div class="v1-waiting">${text}</div>`;
+  showWaiting(){
+    const c=this.root.querySelector('#v1Controls');
+    c.innerHTML='';
+    c.classList.add('v1-controls-hidden');
   }
 
   renderHeroControls(legal,onAction,street='preflop'){
     const c=this.root.querySelector('#v1Controls');
+    c.classList.remove('v1-controls-hidden');
     const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise;
     let selected=Math.min(max,Math.max(min,legal.currentBet||min));
     const pre=street==='preflop';
+    const facingOpen=pre&&legal.currentBet>legal.bb;
     const presets=pre
-      ? `<button data-bb="2.2">2.2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button>`
+      ? (facingOpen
+          ? `<button data-mult="3">3x OPEN</button><button data-mult="3.5">3.5x</button><button data-mult="4">4x</button>`
+          : `<button data-bb="2.2">2.2 BB</button><button data-bb="2.5">2.5 BB</button><button data-bb="3">3 BB</button>`)
       : `<button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.75">75%</button><button data-p="1">POT</button>`;
 
     c.innerHTML=`
@@ -310,6 +313,10 @@ export class TableView{
     });
     c.querySelectorAll('[data-bb]').forEach(b=>b.onclick=()=>{
       selected=Math.max(min,Math.min(max,Math.round(legal.bb*Number(b.dataset.bb))));
+      range.value=selected;sync();
+    });
+    c.querySelectorAll('[data-mult]').forEach(b=>b.onclick=()=>{
+      selected=Math.max(min,Math.min(max,Math.round(legal.currentBet*Number(b.dataset.mult))));
       range.value=selected;sync();
     });
     c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});

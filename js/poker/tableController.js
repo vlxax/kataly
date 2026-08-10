@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js?v=180';
-import { TableView } from './tableView.js?v=180';
+import { HoldemDemo } from './engine.js?v=200';
+import { TableView } from './tableView.js?v=200';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -27,7 +27,7 @@ export class TableController{
     on('HAND_STARTED',()=>{this.view.clearHand();this.view.showWaiting('Раздаём карты…')});
     on('FORCED_BET',e=>this.view.postForcedBet(e));
     on('CARD_DEALT',e=>this.view.dealCard(e));
-    on('TURN_STARTED',e=>{this.startTurnTimer(e);this.view.setTurn(e);if(e.nick!==this.heroNick)this.view.showWaiting(`${e.nick} думает…`)});
+    on('TURN_STARTED',e=>{this.startTurnTimer(e);this.view.setTurn(e);if(e.nick!==this.heroNick)this.view.showWaiting();});
     on('PLAYER_FOLDED',e=>this.view.showPlayerAction('PLAYER_FOLDED',e));
     on('PLAYER_CHECKED',e=>this.view.showPlayerAction('PLAYER_CHECKED',e));
     on('PLAYER_CALLED',e=>this.view.showPlayerAction('PLAYER_CALLED',e));
@@ -100,7 +100,7 @@ export class TableController{
     if(!this.pendingResolve)return;
     clearInterval(this.turnTimer);
     const r=this.pendingResolve;this.pendingResolve=null;this.pendingLegal=null;
-    this.view.showWaiting('Ход принят');
+    this.view.showWaiting();
     r(action);
   }
 

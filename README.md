@@ -373,3 +373,18 @@ of `seat.el.querySelector`.
 - Added 100-hand regression for crashes, duplicate cards and chip conservation.
 
 - Automated regression can disable choreography sleeps with `eventPaceMs=0`; production portrait timing is unchanged.
+
+## V1.9 — BETTING + BOT RANGES
+- Added position-aware preflop opening thresholds for UTG/HJ/CO/BTN/SB/BB.
+- Added stable NIT / REG / LAG / CALLER / SOLID preflop biases.
+- Facing an open, bots now separate fold/call/3-bet decisions instead of using one generic strength rule.
+- Preflop Hero presets now distinguish unopened raise-to sizes (2.2/2.5/3 BB) from facing-open 3-bet sizes (3x/3.5x/4x of the open).
+- Existing V1.8 engine-trust, side-pot, runout and portrait-table work is preserved.
+
+## V2.0 — SMART BOTS + HERO HUD
+- Bots now use postflop made-hand strength, top pair/overpair, flush draws, straight draws, pot odds, SPR, board texture, position and player profile.
+- Previous aggressor is tracked for c-bet/probe decisions.
+- Hero hole cards remain anchored at the bottom.
+- Hero position is permanently visible in the bottom HUD every hand.
+- The bottom opponent-status/narration block is removed.
+- Action controls exist only on Hero's turn; otherwise the bottom action area collapses completely.

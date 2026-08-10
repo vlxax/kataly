@@ -831,3 +831,40 @@ html,body{width:100%;min-height:100%;margin:0;background:#050608}
 .v1-history-drawer section>div.street b{color:#ff5a96;letter-spacing:.12em}
 .v1-banner.win b{letter-spacing:.04em}
 .v1-banner.win span{max-width:92%;text-align:center}
+
+/* ===== V2.0 SMART BOTS + HERO HUD ===== */
+.v1-room .v1-hero-strip{
+  justify-content:flex-start;
+  background:linear-gradient(180deg,rgba(12,14,18,.96),rgba(7,8,10,.99));
+  border-color:rgba(255,255,255,.08);
+}
+.v1-room .v1-hero-cards{
+  min-width:86px;
+  min-height:50px;
+}
+.v1-room .v1-hero-position{
+  display:block;
+  font-size:8px!important;
+  font-weight:1000;
+  color:#ff79a7!important;
+  letter-spacing:.08em;
+}
+.v1-room .v1-hero-meta b{
+  font-size:8px;
+  color:#d8d2d8;
+}
+.v1-room .v1-controls-hidden{
+  height:0!important;
+  min-height:0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+  pointer-events:none;
+}
+.v1-room .v1-controls:not(.v1-controls-hidden){
+  height:116px;
+  min-height:116px;
+}
+.v1-room .v1-turn-status{display:none!important}

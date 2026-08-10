@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=180';
-import { PokerEventBus } from './eventBus.js?v=180';
+import { createDeck, shuffle } from './deck.js?v=200';
+import { PokerEventBus } from './eventBus.js?v=200';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -218,7 +218,10 @@ export class HoldemDemo {
       toCall,canCheck:toCall===0,canRaise:raiseAllowed&&maxTarget>this.currentBet,
       minRaise:Math.min(maxTarget,minTarget),maxRaise:maxTarget,stack:player.stack,pot:this.pot,
       bb:this.bb,stackBB:player.stack/this.bb,potBB:this.pot/this.bb,toCallBB:toCall/this.bb,
-      position:player.position,currentBet:this.currentBet
+      position:player.position,currentBet:this.currentBet,
+      currentBetBB:this.currentBet/this.bb,
+      minRaiseBB:Math.min(maxTarget,minTarget)/this.bb,
+      maxRaiseBB:maxTarget/this.bb
     };
   }
 
@@ -229,6 +232,7 @@ export class HoldemDemo {
     this.updateLevel();this.running=true;this.handNo++;
     this.deck=shuffle(createDeck());this.board=[];this.pot=0;this.streetPot=0;this.street='preflop';this.phase='dealing';
     this.handActions=[];this.handHistory=[];this.log=[];this.currentBet=0;this.lastFullRaise=this.bb;
+    this.lastAggressorNick=null;this.lastAggressionStreet=null;
     this.currentActorSeat=null;this.currentActorNick=null;
 
     this.players.forEach(p=>{
@@ -394,6 +398,7 @@ export class HoldemDemo {
       const old=this.currentBet;
       amount=this.take(player,player.stack,'ALL-IN');
       if(player.bet>old){
+        this.lastAggressorNick=player.nick;this.lastAggressionStreet=this.street;
         const size=player.bet-old;
         if(size>=this.lastFullRaise){this.lastFullRaise=size;fullRaise=true;}
         this.currentBet=player.bet;
@@ -407,6 +412,7 @@ export class HoldemDemo {
       const old=this.currentBet;
       amount=this.take(player,target-player.bet,'RAISE');
       if(player.bet>old){
+        this.lastAggressorNick=player.nick;this.lastAggressionStreet=this.street;
         const size=player.bet-old;
         if(size>=this.lastFullRaise){this.lastFullRaise=size;fullRaise=true;}
         this.currentBet=player.bet;
@@ -425,32 +431,182 @@ export class HoldemDemo {
     return{fullRaise};
   }
 
+  handCode(hole){
+    if(!hole||hole.length<2)return'';
+    const order='23456789TJQKA';
+    const a=hole[0][0],b=hole[1][0];
+    const hi=order.indexOf(a)>=order.indexOf(b)?a:b;
+    const lo=hi===a?b:a;
+    if(hi===lo)return hi+lo;
+    return hi+lo+(hole[0][1]===hole[1][1]?'s':'o');
+  }
+
+  preflopOpenScore(player){
+    const base={UTG:.74,HJ:.68,CO:.58,BTN:.49,SB:.55,BB:.62}[player.position]??.62;
+    return base;
+  }
+
+  preflopProfile(player){
+    const bots=this.players.filter(x=>x.nick!==this.heroNick);
+    const i=Math.max(0,bots.findIndex(x=>x.seat===player.seat));
+    return [
+      {name:'NIT',openAdj:.08,threeBetAdj:.08,callAdj:.05,aggr:.40},
+      {name:'REG',openAdj:0,threeBetAdj:0,callAdj:0,aggr:.52},
+      {name:'LAG',openAdj:-.10,threeBetAdj:-.09,callAdj:-.03,aggr:.70},
+      {name:'CALLER',openAdj:-.03,threeBetAdj:.13,callAdj:-.13,aggr:.27},
+      {name:'SOLID',openAdj:.02,threeBetAdj:.02,callAdj:.02,aggr:.48}
+    ][i%5];
+  }
+
+  preflopDecision(player,legal,power){
+    const profile=this.preflopProfile(player);
+    const unopened=this.currentBet<=this.bb;
+    const facingRaise=this.currentBet>this.bb;
+    const threshold=this.preflopOpenScore(player)+profile.openAdj;
+    const strong3bet=.76+profile.threeBetAdj;
+    const callFloor=Math.max(.32,threshold-.14+profile.callAdj);
+
+    if(unopened){
+      if(legal.canRaise&&power>=threshold){
+        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.bb*(player.position==='SB'?3:2.2))));
+        return{type:'raise',amount:target};
+      }
+      if(legal.canCheck)return{type:'check'};
+      return power>=callFloor?{type:'call'}:{type:'fold'};
+    }
+
+    if(facingRaise){
+      if(legal.canRaise&&power>=strong3bet){
+        const multiplier=player.position==='SB'||player.position==='BB'?3.6:3.1;
+        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*multiplier)));
+        return{type:'raise',amount:target};
+      }
+      if(power>=callFloor&&legal.toCallBB<=Math.max(12,legal.stackBB*.22))return{type:'call'};
+      return legal.canCheck?{type:'check'}:{type:'fold'};
+    }
+    return null;
+  }
+
+  postflopFeatures(player){
+    const cards=(player.hole||[]).concat(this.board||[]);
+    const rank=cards.length>=5?evaluate7(cards):[0];
+    const hole=player.hole||[];
+    const board=this.board||[];
+    const boardRanks=board.map(c=>RANK[c[0]]);
+    const holeRanks=hole.map(c=>RANK[c[0]]);
+    const maxBoard=boardRanks.length?Math.max(...boardRanks):0;
+
+    const madeCategory=rank[0]||0;
+    const pairOnHole=holeRanks.some(r=>boardRanks.includes(r));
+    const overpair=holeRanks.length===2&&holeRanks[0]===holeRanks[1]&&holeRanks[0]>maxBoard;
+    const topPair=holeRanks.some(r=>r===maxBoard);
+    const overcards=holeRanks.filter(r=>r>maxBoard).length;
+
+    const suitCounts={};
+    cards.forEach(c=>suitCounts[c[1]]=(suitCounts[c[1]]||0)+1);
+    const flushDraw=Object.values(suitCounts).some(n=>n===4);
+
+    const uniq=[...new Set(cards.map(c=>RANK[c[0]]))].sort((a,b)=>a-b);
+    if(uniq.includes(14))uniq.unshift(1);
+    let straightDraw=false;
+    for(let i=0;i<uniq.length;i++){
+      const window=uniq.filter(x=>x>=uniq[i]&&x<=uniq[i]+4);
+      if(new Set(window).size>=4){straightDraw=true;break;}
+    }
+
+    const pairedBoard=new Set(boardRanks).size<boardRanks.length;
+    const monotone=board.length>=3&&new Set(board.map(c=>c[1])).size===1;
+    const connected=boardRanks.length>=3&&(Math.max(...boardRanks)-Math.min(...boardRanks)<=5);
+
+    let strength=.08;
+    if(madeCategory>=5)strength=.93;
+    else if(madeCategory===4)strength=.88;
+    else if(madeCategory===3)strength=.78;
+    else if(madeCategory===2)strength=.67;
+    else if(overpair)strength=.62;
+    else if(topPair)strength=.56;
+    else if(pairOnHole)strength=.43;
+    else strength=.16+overcards*.05;
+
+    if(flushDraw)strength+=.10;
+    if(straightDraw)strength+=.08;
+    strength=Math.max(.02,Math.min(.99,strength));
+
+    return{
+      rank,madeCategory,pairOnHole,overpair,topPair,overcards,
+      flushDraw,straightDraw,pairedBoard,monotone,connected,strength
+    };
+  }
+
+  inPosition(player){
+    const order={BTN:6,CO:5,HJ:4,UTG:3,'BTN/SB':2,SB:1,BB:0};
+    const live=this.liveInHand().filter(p=>!p.folded);
+    if(!live.length)return false;
+    return (order[player.position]??0)>=Math.max(...live.map(p=>order[p.position]??0));
+  }
+
+  postflopDecision(player,legal){
+    const f=this.postflopFeatures(player);
+    const profile=this.preflopProfile(player);
+    const ip=this.inPosition(player);
+    const potOdds=legal.toCall/Math.max(1,legal.pot+legal.toCall);
+    const spr=player.stack/Math.max(1,legal.pot);
+    const facingBet=legal.toCall>0;
+    const wasAggressor=this.lastAggressorNick===player.nick;
+    const draw=f.flushDraw||f.straightDraw;
+    const wet=f.monotone||f.connected;
+    const adjusted=Math.max(0,Math.min(1,f.strength+(profile.aggr-.5)*.10+(ip?.035:0)));
+
+    // Facing a bet: use hand strength + pot odds + draws rather than raw hole-card power.
+    if(facingBet){
+      if(legal.canRaise && adjusted>.82 && spr>0.7){
+        const mult=wet?3.0:2.6;
+        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*mult)));
+        return{type:'raise',amount:target};
+      }
+      if(draw && potOdds<=.34)return{type:'call'};
+      if(adjusted>=Math.max(.36,potOdds+.12))return{type:'call'};
+      if(legal.canRaise && adjusted>.58 && profile.aggr>.62 && ip && Math.random()<.18){
+        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*2.7)));
+        return{type:'raise',amount:target};
+      }
+      return{type:'fold'};
+    }
+
+    // Checked to: c-bet/value/probe depending on profile, texture and position.
+    if(legal.canRaise){
+      let betFreq=.10+(profile.aggr*.34)+(ip?.08:0);
+      if(wasAggressor&&this.street==='flop')betFreq+=.18;
+      if(wet&&adjusted<.50)betFreq-=.08;
+      if(adjusted>.72)betFreq=.86;
+      if(draw&&profile.aggr>.5)betFreq+=.10;
+
+      if(Math.random()<Math.max(.05,Math.min(.92,betFreq))){
+        let frac=.33;
+        if(adjusted>.78)frac=wet?.70:.55;
+        else if(draw)frac=wet?.55:.40;
+        else if(wet)frac=.50;
+        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(legal.pot*frac)));
+        return{type:'raise',amount:target};
+      }
+    }
+    return{type:'check'};
+  }
+
   async botAction(player,legal){
     const dramatic=(legal.toCallBB>=8 || (legal.potBB&&legal.toCallBB/legal.potBB>.65));
     const base=this.botDelayMs===0?0:(dramatic?1500:650);
     const jitter=this.botDelayMs===0?0:Math.floor(Math.random()*(dramatic?1900:1200));
     await sleep(base+jitter);
-    let power=this.preflopStrength(player.hole);
-    if(this.street!=='preflop' && this.board.length>=3){
-      const rank=evaluate7(player.hole.concat(this.board));
-      const made=(rank[0]||0)/8;
-      const overcards=player.hole.filter(c=>RANK[c[0]]>Math.max(...this.board.map(x=>RANK[x[0]]))).length*.04;
-      const suited=player.hole[0]&&player.hole[1]&&player.hole[0][1]===player.hole[1][1]?0.03:0;
-      power=Math.min(1,.12+made*.78+overcards+suited);
+
+    const power=this.preflopStrength(player.hole);
+    if(this.street==='preflop'){
+      const modeled=this.preflopDecision(player,legal,power);
+      if(modeled)return modeled;
     }
-    const pressure=legal.toCall/Math.max(1,legal.pot+legal.toCall);
-    if(legal.toCall>0&&power<.28&&pressure>.18)return{type:'fold'};
-    if(legal.canRaise&&power>.68&&Math.random()<.42){
-      const sizing=this.street==='preflop'?Math.max(this.bb*2.2,this.currentBet+this.bb*1.2):Math.max(this.bb,legal.pot*.5);
-      const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet+sizing)));
-      return{type:'raise',amount:target};
-    }
-    if(legal.toCall===0&&legal.canRaise&&power>.50&&Math.random()<.30){
-      const sizing=this.street==='preflop'?this.bb*2.2:Math.max(this.bb,legal.pot*.33);
-      return{type:'raise',amount:Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(sizing)))};
-    }
-    return{type:legal.canCheck?'check':'call'};
+    return this.postflopDecision(player,legal);
   }
+
   preflopStrength(hole){
     if(!hole||hole.length<2)return.5;
     const a=RANK[hole[0][0]],b=RANK[hole[1][0]],pair=a===b,suited=hole[0][1]===hole[1][1],gap=Math.abs(a-b);
