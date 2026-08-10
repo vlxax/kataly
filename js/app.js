@@ -9,6 +9,13 @@ import { createLobby } from './multiplayer/lobby.js';
 const $ = (q) => document.querySelector(q);
 const app = document.getElementById('app');
 const DEV_FREE_PLAY = true;
+function devUnlock(){
+  state.wallet = 999999999;
+  try { saveState(); } catch(e) {}
+  return true;
+}
+devUnlock();
+
 state.wallet = 999999999;
 saveState(); // force dev bankroll on every load // engine testing: buy-ins do not block table entry
 
@@ -153,7 +160,7 @@ function openGameSetup(focusInvite=false){
   };
   wrap.querySelector('#closeSheet').onclick=()=>wrap.remove();
   wrap.querySelector('#goLobby').onclick=()=>{
-    if(!DEV_FREE_PLAY && buyIn>state.wallet) return toast('Не хватает внутренней валюты');
+    
     const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});
     wrap.remove(); openLobby(lobby);
   };
@@ -181,7 +188,7 @@ function openLobby(lobby){
   document.body.appendChild(wrap);
   wrap.querySelector('#leaveLobby').onclick=()=>wrap.remove();
   wrap.querySelector('#startDemo').onclick=()=>{
-    if(!DEV_FREE_PLAY && lobby.buyIn>state.wallet) return toast('Не хватает внутренней валюты');
+    
     if(!DEV_FREE_PLAY) state.wallet-=lobby.buyIn;
     saveState();
     wrap.remove();
@@ -417,6 +424,8 @@ function showHandBreakdown(x){
 }
 
 function render(){
+  state.wallet = 999999999;
+  saveState();
   if(state.view==='invites') return renderInvites();
   if(state.view==='history') return renderHistory();
   if(state.view==='stats') return renderStats();

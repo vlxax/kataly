@@ -34,7 +34,7 @@ if (!Array.isArray(state.invites)) state.invites = [];
 if (!Array.isArray(state.history)) state.history = [];
 if (!['home','invites','history','stats'].includes(state.view)) state.view = 'home';
 if (!Number.isFinite(Number(state.wallet))) state.wallet = DEFAULT.wallet;
-state.wallet = Number(state.wallet);
+state.wallet = 999999999; // V0.8.3 DEV SESSION UNLOCK
 // DEV migration: old localStorage could leave the tester broke and block the poker engine.
 // Until economy is production-ready, always keep a large test bankroll.
 state.wallet = 999999999; // DEV: unlimited test bankroll
