@@ -112,3 +112,9 @@
 - Side-pot construction and split-pot payouts.
 - Decision logs now store position, effective stack, BB, pot context and decision time.
 - Poker Brain can later consume the richer hand/action log without pretending current heuristic scores are GTO.
+
+
+## V0.7.2 — SAFARI FIX
+- Исправлен Safari/WebKit parse crash.
+- Конструкции `pair?.25`, `suited?.07`, `condition?.08` были двусмысленно записанными ternary-выражениями.
+- Они заменены на обычные `condition ? value : 0`.

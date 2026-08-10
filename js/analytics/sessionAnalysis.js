@@ -7,7 +7,7 @@ function heroActions(hands,heroNick){
 function preflopPower(cards=[]){
   if(cards.length<2)return .5;
   const a=RV[cards[0][0]],b=RV[cards[1][0]],pair=a===b,suited=cards[0][1]===cards[1][1];
-  return Math.max(0,Math.min(1,(a+b)/30+(pair?.25:0)+(suited?.07:0)-(Math.abs(a-b)>5?.08:0)));
+  return Math.max(0,Math.min(1,(a+b)/30+(pair ? 0.25 : 0)+(suited ? 0.07 : 0)-(Math.abs(a-b) > 5 ? 0.08 : 0)));
 }
 function classify(a){
   let severity='good', score=86, title='Нормальное решение', reason='Линия выглядит логично для текущего банка и давления.';
