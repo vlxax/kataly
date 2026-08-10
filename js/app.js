@@ -1,3 +1,4 @@
+import { analyzeSession } from './analytics/sessionAnalysis.js';
 import { mountPokerTable } from './tableUI.js';
 
 import { state, saveState, resetDemo } from './state.js';
@@ -179,10 +180,78 @@ function openLobby(lobby){
   wrap.querySelector('#startDemo').onclick=()=>{
     if(lobby.buyIn>state.wallet) return toast('Не хватает внутренней валюты');
     state.wallet-=lobby.buyIn;
-    const session=createSessionRecord(lobby); session.playerCount=lobby.seats; session.status='ready-for-engine';
-    state.history.unshift(session); saveState(); wrap.remove();
-    toast('Лобби работает. Следующий этап — игровой стол.'); state.view='history'; saveState(); render();
+    saveState();
+    wrap.remove();
+
+    mountPokerTable({
+      lobby,
+      heroNick: state.nick,
+      onExit: ()=>render(),
+      onSessionEnd: (result)=>{
+        const chipDelta = Math.round((result.stackEnd-result.stackStart)*10)/10;
+        const reward = result.tournament?.prize || 0;
+        state.wallet += reward;
+
+        const session={
+          id:'session_'+Math.random().toString(36).slice(2,10),
+          createdAt:new Date().toISOString(),
+          format:lobby.format,
+          seats:lobby.seats,
+          buyIn:lobby.buyIn,
+          stackBB:lobby.stackBB,
+          playerCount:lobby.players.length,
+          status:'completed-demo',
+          hands:result.hands,
+          heroStackStart:result.stackStart,
+          heroStackEnd:result.stackEnd,
+          chipDelta,
+          reward,
+          place:result.tournament?.heroPlace||null,
+          tournament:result.tournament||null,
+          lastHand:result.lastHand,
+          handHistory:result.handHistory||[],
+          actions:result.actions||[]
+        };
+        session.analysis=analyzeSession({hands:session.handHistory,heroNick:state.nick});
+        state.history.unshift(session);
+        saveState();
+        showSessionResult(session);
+      }
+    });
   };
+}
+
+
+function showSessionResult(session){
+  const won=session.chipDelta>0;
+  const wrap=document.createElement('div');
+  wrap.className='modal-backdrop';
+  wrap.innerHTML=`<div class="sheet session-result-sheet">
+    <div class="sheet-handle"></div>
+    <div class="eyebrow">ТУРНИРНАЯ СЕССИЯ</div>
+    <h2>${session.place===1?'Победа':session.place?`${session.place} место`:won?'Плюсовая катка':'Сессия завершена'}</h2>
+    <div class="result-money ${won?'positive':'negative'}">${session.chipDelta>0?'+':''}${session.chipDelta} BB</div>
+    <p>${session.hands} рук · ${session.seats}-max · NL Hold’em</p>
+
+    <div class="result-grid">
+      <div><span>Награда</span><b>${money(session.reward)}</b></div>
+      <div><span>Бай-ин</span><b>${money(session.buyIn)}</b></div>
+      <div><span>Старт</span><b>${session.heroStackStart} BB</b></div>
+      <div><span>Финиш</span><b>${Math.round(session.heroStackEnd*10)/10} BB</b></div>
+    </div>
+
+    <div class="analysis-teaser">
+      <div class="eyebrow">POKER BRAIN</div>
+      <b>Оценка сессии: ${session.analysis?.overall||0}/100</b>
+      <span>${session.analysis?.errors?.length||0} ошибок · ${session.analysis?.warnings?.length||0} спорных решений · ${session.analysis?.stats?.decisions||0} решений записано.</span>
+    </div>
+
+    <button class="btn btn-primary" id="toHistory" style="width:100%">ПОСМОТРЕТЬ СЕССИЮ</button>
+    <button class="btn btn-ghost" id="backHome" style="width:100%">В КАТАЛЫ</button>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('#toHistory').onclick=()=>{wrap.remove();state.view='history';saveState();render()};
+  wrap.querySelector('#backHome').onclick=()=>{wrap.remove();state.view='home';saveState();render()};
 }
 
 function renderInvites(){
@@ -200,31 +269,148 @@ function renderInvites(){
 }
 
 function renderHistory(){
+  const sessions=state.history.filter(s=>s.status==='completed-demo' || s.status==='played_demo');
   shell(`
-    <div class="section-head" style="margin-top:4px"><h2>История</h2><span>пока демо</span></div>
-    ${state.history.length?state.history.map(s=>`
-      <div class="card" style="padding:16px;margin-bottom:9px">
-        <div class="eyebrow">${new Date(s.createdAt).toLocaleString('ru-RU')}</div>
-        <h3 style="margin:7px 0 5px">${s.seats}-MAX · ${s.format}</h3>
-        <p style="margin:0;color:var(--muted);font-size:11px">Бай-ин ${money(s.buyIn)} · ${s.playerCount} игроков · статус: ${s.status}</p>
-      </div>`).join(''):`<div class="card empty">Сыгранных сессий пока нет.</div>`}
+    <div class="section-head" style="margin-top:4px"><h2>История</h2><span>${sessions.length} сессий</span></div>
+    ${sessions.length?sessions.map(s=>`
+      <div class="card session-card">
+        <div class="session-card-top">
+          <div><div class="eyebrow">${new Date(s.createdAt).toLocaleString('ru-RU')}</div><h3>${s.seats}-MAX · ${s.format}</h3></div>
+          <div class="session-delta ${(s.chipDelta||0)>=0?'up':'down'}">${(s.chipDelta||0)>0?'+':''}${s.chipDelta||0} BB</div>
+        </div>
+        <div class="session-meta">
+          <span>${s.place?`${s.place} место`:'сессия'}</span><span>${s.hands||0} рук</span><span>бай-ин ${money(s.buyIn)}</span><span>приз ${money(s.reward||0)}</span>
+        </div>
+        <div class="session-actions">
+          <button class="btn btn-secondary" data-session="${s.id}">СТАТИСТИКА</button>
+          <button class="btn btn-secondary" data-analysis="${s.id}">РАЗБОР</button>
+        </div>
+      </div>`).join(''):`<div class="card empty">Сыгранных сессий пока нет. Садись за стол — здесь появится история.</div>`}
   `);
+  document.querySelectorAll('[data-session]').forEach(b=>b.onclick=()=>showSessionDetails(b.dataset.session));
+  document.querySelectorAll('[data-analysis]').forEach(b=>b.onclick=()=>showAnalysisStub(b.dataset.analysis));
 }
 
 function renderStats(){
+  const sessions=state.history.filter(s=>s.status==='completed-demo' || s.status==='played_demo');
+  const hands=sessions.reduce((a,s)=>a+(s.hands||0),0);
+  const net=sessions.reduce((a,s)=>a+(s.chipDelta||0),0);
+  const wins=sessions.filter(s=>s.place===1).length;
+  const itm=sessions.filter(s=>s.place && s.place<=3).length;
+  const bestPlace=sessions.filter(s=>s.place).length?Math.min(...sessions.filter(s=>s.place).map(s=>s.place)):null;
+  const analyses=sessions.map(s=>s.analysis).filter(Boolean);
+  const avgMetric=(key)=>analyses.length?Math.round(analyses.reduce((sum,a)=>sum+(a[key]??0),0)/analyses.filter(a=>a[key]!=null).length):null;
+  const pfScore=avgMetric('preflop'), postScore=avgMetric('postflop'), sizingScore=avgMetric('sizing'), disciplineScore=avgMetric('discipline');
   shell(`
-    <div class="section-head" style="margin-top:4px"><h2>Статистика</h2><span>каркас V0.1</span></div>
-    <div class="card" style="padding:18px">
-      <div class="eyebrow">СЕССИОННАЯ АНАЛИТИКА</div>
-      <h3 style="font-size:23px;margin:8px 0">Сначала записываем всё.</h3>
-      <p style="font-size:12px;color:var(--muted);line-height:1.5">В V0.2 каждое действие будет попадать в hand history: улица, позиция, стек, банк, действие, размер ставки и время решения. Потом сюда добавятся VPIP/PFR/3-bet и анализ Poker Brain.</p>
+    <div class="section-head" style="margin-top:4px"><h2>Статистика</h2><span>по сыгранным сессиям</span></div>
+    <div class="stats-hero card">
+      <div><span>СЕССИЙ</span><b>${sessions.length}</b></div>
+      <div><span>РУК</span><b>${hands}</b></div>
+      <div><span>РЕЗУЛЬТАТ</span><b class="${net>=0?'good':'bad'}">${net>0?'+':''}${Math.round(net*10)/10} BB</b></div>
+      <div><span>ПОБЕД</span><b>${sessions.length?Math.round(wins/sessions.length*100):0}%</b></div>
+      <div><span>ITM</span><b>${sessions.length?Math.round(itm/sessions.length*100):0}%</b></div>
+      <div><span>ЛУЧШЕЕ МЕСТО</span><b>${bestPlace??'—'}</b></div>
     </div>
-    <div class="card" style="padding:18px;margin-top:10px">
-      <div class="eyebrow">СЕЙЧАС</div>
-      <h3>${state.history.length}</h3>
-      <p style="font-size:11px;color:var(--muted)">созданных тестовых сессий</p>
+
+    <div class="section-head"><h2>Игровой профиль</h2><span>следующий слой</span></div>
+    <div class="card pokerbrain-preview">
+      <div class="metric-row"><span>Префлоп</span><b>${pfScore??'—'}</b><small>средняя оценка решений</small></div>
+      <div class="metric-row"><span>Постфлоп</span><b>${postScore??'—'}</b><small>флоп + тёрн + ривер</small></div>
+      <div class="metric-row"><span>Сайзинги</span><b>${sizingScore??'—'}</b><small>оценка выбранных размеров</small></div>
+      <div class="metric-row"><span>Дисциплина</span><b>${disciplineScore??'—'}</b><small>штраф за повторяющиеся ошибки</small></div>
     </div>
   `);
+}
+
+function showSessionDetails(id){
+  const s=state.history.find(x=>x.id===id); if(!s)return;
+  const a=s.analysis||analyzeSession({hands:s.handHistory||[],heroNick:state.nick});
+  const wrap=document.createElement('div');wrap.className='modal-backdrop';
+  wrap.innerHTML=`<div class="sheet session-detail-sheet">
+    <div class="sheet-handle"></div><div class="eyebrow">СТАТИСТИКА СЕССИИ</div>
+    <h2>${s.seats}-MAX · ${s.format}</h2>
+    <div class="result-grid">
+      <div><span>Рук</span><b>${s.hands||0}</b></div>
+      <div><span>Результат</span><b>${(s.chipDelta||0)>0?'+':''}${s.chipDelta||0} BB</b></div>
+      <div><span>VPIP*</span><b>${a.stats.vpip}%</b></div>
+      <div><span>PFR*</span><b>${a.stats.pfr}%</b></div>
+    </div>
+    <div class="brain-score-grid">
+      <div><span>Префлоп</span><b>${a.preflop??'—'}</b></div>
+      <div><span>Постфлоп</span><b>${a.postflop??'—'}</b></div>
+      <div><span>Сайзинги</span><b>${a.sizing??'—'}</b></div>
+      <div><span>Дисциплина</span><b>${a.discipline}</b></div>
+    </div>
+    <p class="tiny-note">* Пока это учебные метрики прототипа, рассчитанные по записанным решениям Hero, а не полноценный HUD.</p>
+    <button class="btn btn-primary open-analysis" style="width:100%">РАЗОБРАТЬ ${a.errors.length+a.warnings.length} РЕШЕНИЙ</button>
+    <button class="btn btn-secondary close-detail" style="width:100%;margin-top:8px">ЗАКРЫТЬ</button>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.close-detail').onclick=()=>wrap.remove();
+  wrap.querySelector('.open-analysis').onclick=()=>{wrap.remove();showAnalysisStub(id)};
+}
+function showAnalysisStub(id){
+  const s=state.history.find(x=>x.id===id); if(!s)return;
+  const a=s.analysis||analyzeSession({hands:s.handHistory||[],heroNick:state.nick});
+  const issues=[...a.errors,...a.warnings];
+  const wrap=document.createElement('div');wrap.className='modal-backdrop';
+  wrap.innerHTML=`<div class="sheet analysis-sheet">
+    <div class="sheet-handle"></div>
+    <div class="analysis-head">
+      <div><div class="eyebrow">POKER BRAIN · РАЗБОР</div><h2>${a.overall}/100</h2></div>
+      <div class="analysis-count"><b>${a.errors.length}</b><span>ошибок</span></div>
+    </div>
+
+    <div class="brain-score-grid compact">
+      <div><span>Префлоп</span><b>${a.preflop??'—'}</b></div>
+      <div><span>Постфлоп</span><b>${a.postflop??'—'}</b></div>
+      <div><span>Сайзинг</span><b>${a.sizing??'—'}</b></div>
+      <div><span>Дисциплина</span><b>${a.discipline}</b></div>
+    </div>
+
+    <div class="analysis-section-title">ТРЕБУЮТ ВНИМАНИЯ · ${issues.length}</div>
+    <div class="issue-list">
+      ${issues.length?issues.slice(0,12).map((x,i)=>`
+        <button class="issue-card ${x.severity}" data-issue="${i}">
+          <div class="issue-top"><span>HAND #${x.handNo} · ${String(x.street).toUpperCase()}</span><b>${x.score}/100</b></div>
+          <h3>${x.title}</h3>
+          <p>${x.reason}</p>
+          <small>${x.action.toUpperCase()} · банк после действия ${Math.round(x.potAfterBB*10)/10} BB</small>
+        </button>`).join(''):`<div class="card empty">Критичных ошибок в этой короткой сессии не найдено.</div>`}
+    </div>
+
+    <div class="analysis-section-title">ЛИКИ</div>
+    ${a.leaks.length?a.leaks.map(l=>`<div class="leak-card">
+      <div><span>${l.status} · ${l.count} эпиз.</span><b>${l.trend}</b></div>
+      <h3>${l.title}</h3><p>${l.text}</p>
+      <button class="btn btn-secondary treat-leak">ЛЕЧИТЬ</button>
+    </div>`).join(''):`<div class="card empty">Для уверенного лика нужен больший сэмпл. Сыграй ещё несколько сессий.</div>`}
+
+    <button class="btn btn-secondary close-analysis" style="width:100%;margin-top:12px">ЗАКРЫТЬ</button>
+  </div>`;
+  document.body.appendChild(wrap);
+  wrap.querySelector('.close-analysis').onclick=()=>wrap.remove();
+  wrap.querySelectorAll('.treat-leak').forEach(b=>b.onclick=()=>toast('Дальше свяжем этот лик с персональным тренажёром.'));
+  wrap.querySelectorAll('[data-issue]').forEach(b=>b.onclick=()=>{
+    const x=issues[+b.dataset.issue]; showHandBreakdown(x);
+  });
+}
+function showHandBreakdown(x){
+  const h=x.hand;
+  const wrap=document.createElement('div');wrap.className='modal-backdrop hand-breakdown-layer';
+  wrap.innerHTML=`<div class="sheet">
+    <div class="sheet-handle"></div><div class="eyebrow">HAND #${h.handNo} · ${String(x.street).toUpperCase()}</div>
+    <h2>${x.title}</h2>
+    <div class="mini-cards">${(h.heroHole||[]).map(c=>`<span>${c}</span>`).join('')} <i>·</i> ${(h.board||[]).map(c=>`<span>${c}</span>`).join('')}</div>
+    <div class="decision-verdict ${x.severity}">
+      <b>${x.score}/100</b><span>${x.reason}</span>
+    </div>
+    <div class="hand-line">
+      ${(h.actions||[]).map(a=>`<div class="${a.player===state.nick?'hero-line':''}"><span>${String(a.street).toUpperCase()} · ${a.player}</span><b>${a.action.toUpperCase()}${a.amountBB?' '+Math.round(a.amountBB*10)/10+' BB':''}</b></div>`).join('')}
+    </div>
+    <button class="btn btn-secondary close-hand" style="width:100%">НАЗАД К РАЗБОРУ</button>
+  </div>`;
+  document.body.appendChild(wrap);wrap.querySelector('.close-hand').onclick=()=>wrap.remove();
 }
 
 function render(){
