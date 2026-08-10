@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js?v=200';
-import { TableView } from './tableView.js?v=200';
+import { HoldemDemo } from './engine.js?v=210';
+import { TableView } from './tableView.js?v=210';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){

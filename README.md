@@ -388,3 +388,11 @@ of `seat.el.querySelector`.
 - Hero position is permanently visible in the bottom HUD every hand.
 - The bottom opponent-status/narration block is removed.
 - Action controls exist only on Hero's turn; otherwise the bottom action area collapses completely.
+
+## V2.1 — BOT BRAIN
+- Concrete position-based preflop range sets replace pure threshold opening.
+- Added distinct 3-bet and defend ranges for NIT / REG / LAG / CALLER / SOLID profiles.
+- Added simplified range-advantage model by board texture and position.
+- Postflop decisions now combine made hand, draws, pot odds, SPR, position, profile, previous aggression and range advantage.
+- Bot VPIP/PFR/3bet-style counters are accumulated from actual actions and shown as a tiny live HUD.
+- Hero's oval seat is minimized because the real Hero cockpit remains anchored at the bottom.

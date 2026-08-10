@@ -63,7 +63,7 @@ export class TableView{
     this.players.forEach((p,i)=>{
       const pos=this.seatPos(i,this.players.length);
       const seat=document.createElement('div');
-      seat.className='v1-seat';
+      seat.className='v1-seat'+(p.nick===this.heroNick?' hero-seat':'');
       seat.style.left=pos[0]+'%';seat.style.top=pos[1]+'%';
       seat.innerHTML=`
         <div class="v1-seat-cards"></div>
@@ -109,7 +109,11 @@ export class TableView{
 
     s.players.forEach((p,i)=>{
       const seat=this.seats.get(i);if(!seat)return;
-      seat.stack.innerHTML=`<b>${bb(p.stackBB)} BB</b><span>${money(p.stack)}</span>`;
+      const st=s.botStats&&s.botStats[p.nick];
+      const hud=st&&p.nick!==this.heroNick&&st.hands>0
+        ? `<small>${Math.round(st.vpip/Math.max(1,st.hands)*100)}/${Math.round(st.pfr/Math.max(1,st.hands)*100)}/${Math.round(st.threeBet/Math.max(1,st.hands)*100)}</small>`
+        : '';
+      seat.stack.innerHTML=`<b>${bb(p.stackBB)} BB</b><span>${money(p.stack)}</span>${hud}`;
       seat.pos.textContent=p.position?` ${p.position}`:'';
       seat.root.classList.toggle('folded',!!p.folded);
       seat.root.classList.toggle('out',!!p.out);

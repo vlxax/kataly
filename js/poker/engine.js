@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=200';
-import { PokerEventBus } from './eventBus.js?v=200';
+import { createDeck, shuffle } from './deck.js?v=210';
+import { PokerEventBus } from './eventBus.js?v=210';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -83,6 +83,12 @@ export class HoldemDemo {
       stack:startingStack,bet:0,totalBet:0,folded:false,out:false,allIn:false,
       hole:[],position:'',lastAction:''
     }));
+    this.botStats=new Map();
+    this.players.forEach(p=>{
+      if(p.nick!==this.heroNick){
+        this.botStats.set(p.nick,{hands:0,vpip:0,pfr:0,threeBet:0,folds:0,calls:0,raises:0,cBets:0});
+      }
+    });
 
     this.blindSchedule=blindSchedule||[
       {sb:50,bb:100,ante:100},{sb:75,bb:150,ante:150},{sb:100,bb:200,ante:200},
@@ -174,7 +180,7 @@ export class HoldemDemo {
       log:this.log.slice(-12),sb:this.sb,bb:this.bb,ante:this.ante,level:this.level+1,
       levelRemaining:this.levelRemaining(),nextLevel:this.nextLevel(),activePlayers:active.length,
       totalPlayers:this.players.length,averageStackBB:avg/this.bb,heroStackBB:(hero?hero.stack:0)/this.bb,
-      currentActorSeat:this.currentActorSeat,currentActorNick:this.currentActorNick,
+      currentActorSeat:this.currentActorSeat,currentActorNick:this.currentActorNick,botStats:Object.fromEntries(this.botStats||[]),
       eliminations:this.eliminations.slice(),finished:this.finished
     };
   }
@@ -441,6 +447,80 @@ export class HoldemDemo {
     return hi+lo+(hole[0][1]===hole[1][1]?'s':'o');
   }
 
+  rankIndex(r){return '23456789TJQKA'.indexOf(r)}
+
+  normalizedHand(hole){
+    if(!hole||hole.length<2)return'';
+    const a=hole[0][0],b=hole[1][0];
+    const ia=this.rankIndex(a),ib=this.rankIndex(b);
+    const hi=ia>=ib?a:b,lo=ia>=ib?b:a;
+    if(hi===lo)return hi+lo;
+    return hi+lo+(hole[0][1]===hole[1][1]?'s':'o');
+  }
+
+  inRange(code,range){
+    if(!code)return false;
+    if(range.has(code))return true;
+    // plus notation like 88+ / AJs+
+    const rank='23456789TJQKA';
+    for(const item of range){
+      if(!item.endsWith('+'))continue;
+      const base=item.slice(0,-1);
+      if(base.length===2&&base[0]===base[1]&&code.length===2&&code[0]===code[1]){
+        if(rank.indexOf(code[0])>=rank.indexOf(base[0]))return true;
+      }
+      if(base.length===3&&code.length===3&&base[0]===code[0]&&base[2]===code[2]){
+        if(rank.indexOf(code[1])>=rank.indexOf(base[1]))return true;
+      }
+    }
+    return false;
+  }
+
+  positionRanges(position){
+    const R=(xs)=>new Set(xs.split(/\s+/).filter(Boolean));
+    const map={
+      UTG:R('77+ AJs+ AQo+ KQs'),
+      HJ:R('66+ ATs+ AJo+ KQs KJs QJs JTs T9s 98s'),
+      CO:R('55+ A8s+ ATo+ KTs+ KQo QTs+ JTs T9s 98s 87s 76s'),
+      BTN:R('22+ A2s+ A8o+ K7s+ KTo+ Q8s+ QTo+ J8s+ JTo T8s+ 98s 87s 76s 65s 54s'),
+      SB:R('22+ A2s+ A9o+ K8s+ KTo+ Q9s+ QTo+ J9s+ T8s+ 98s 87s'),
+      BB:R('22+ A2s+ A7o+ K6s+ K9o+ Q8s+ QTo+ J8s+ T8s+ 97s+ 86s+ 75s+ 65s')
+    };
+    return map[position]||map.CO;
+  }
+
+  threeBetRange(position,profile){
+    const R=(xs)=>new Set(xs.split(/\s+/).filter(Boolean));
+    if(profile.name==='NIT')return R('QQ+ AKs AKo');
+    if(profile.name==='LAG')return R('TT+ AQs+ AKo A5s A4s KQs');
+    if(profile.name==='CALLER')return R('KK+ AKs');
+    if(position==='BTN'||position==='SB'||position==='BB')return R('JJ+ AQs+ AKo A5s KQs');
+    return R('QQ+ AKs AKo');
+  }
+
+  defendRange(position,profile){
+    const R=(xs)=>new Set(xs.split(/\s+/).filter(Boolean));
+    if(position==='BB'){
+      if(profile.name==='NIT')return R('55+ A8s+ ATo+ KTs+ KQo QTs+ JTs T9s 98s');
+      if(profile.name==='CALLER')return R('22+ A2s+ A5o+ K4s+ K8o+ Q6s+ Q9o+ J7s+ J9o+ T7s+ 97s+ 86s+ 75s+ 65s');
+      return R('22+ A2s+ A8o+ K6s+ K9o+ Q8s+ QTo+ J8s+ JTo T8s+ 97s+ 86s+ 75s+ 65s');
+    }
+    return R('66+ ATs+ AJo+ KQs KJs QJs JTs T9s');
+  }
+
+  recordBotStat(player,type){
+    const s=this.botStats&&this.botStats.get(player.nick);
+    if(!s)return;
+    s.hands=Math.max(s.hands,this.handNo);
+    if(type==='VPIP')s.vpip++;
+    if(type==='PFR')s.pfr++;
+    if(type==='3BET')s.threeBet++;
+    if(type==='FOLD')s.folds++;
+    if(type==='CALL')s.calls++;
+    if(type==='RAISE')s.raises++;
+    if(type==='CBET')s.cBets++;
+  }
+
   preflopOpenScore(player){
     const base={UTG:.74,HJ:.68,CO:.58,BTN:.49,SB:.55,BB:.62}[player.position]??.62;
     return base;
@@ -460,28 +540,36 @@ export class HoldemDemo {
 
   preflopDecision(player,legal,power){
     const profile=this.preflopProfile(player);
+    const code=this.normalizedHand(player.hole);
     const unopened=this.currentBet<=this.bb;
     const facingRaise=this.currentBet>this.bb;
-    const threshold=this.preflopOpenScore(player)+profile.openAdj;
-    const strong3bet=.76+profile.threeBetAdj;
-    const callFloor=Math.max(.32,threshold-.14+profile.callAdj);
+    const openRange=this.positionRanges(player.position);
+    const threeRange=this.threeBetRange(player.position,profile);
+    const defend=this.defendRange(player.position,profile);
 
     if(unopened){
-      if(legal.canRaise&&power>=threshold){
+      const opens=this.inRange(code,openRange);
+      if(opens&&legal.canRaise){
+        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'PFR');this.recordBotStat(player,'RAISE');
         const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.bb*(player.position==='SB'?3:2.2))));
-        return{type:'raise',amount:target};
+        this.recordBotStat(player,'RAISE');return{type:'raise',amount:target};
       }
       if(legal.canCheck)return{type:'check'};
-      return power>=callFloor?{type:'call'}:{type:'fold'};
+      this.recordBotStat(player,'FOLD');
+      return{type:'fold'};
     }
 
     if(facingRaise){
-      if(legal.canRaise&&power>=strong3bet){
-        const multiplier=player.position==='SB'||player.position==='BB'?3.6:3.1;
-        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*multiplier)));
-        return{type:'raise',amount:target};
+      if(this.inRange(code,threeRange)&&legal.canRaise){
+        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'PFR');this.recordBotStat(player,'3BET');this.recordBotStat(player,'RAISE');
+        const mult=(player.position==='SB'||player.position==='BB')?3.6:3.1;
+        return{type:'raise',amount:Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*mult)))};
       }
-      if(power>=callFloor&&legal.toCallBB<=Math.max(12,legal.stackBB*.22))return{type:'call'};
+      if(this.inRange(code,defend)&&legal.toCallBB<=Math.max(14,legal.stackBB*.28)){
+        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'CALL');
+        return{type:'call'};
+      }
+      this.recordBotStat(player,'FOLD');
       return legal.canCheck?{type:'check'}:{type:'fold'};
     }
     return null;
@@ -545,6 +633,29 @@ export class HoldemDemo {
     return (order[player.position]??0)>=Math.max(...live.map(p=>order[p.position]??0));
   }
 
+  rangeAdvantage(player){
+    const b=this.board||[];
+    if(b.length<3)return 0;
+    const ranks=b.map(c=>RANK[c[0]]);
+    const high=Math.max(...ranks);
+    const low=Math.min(...ranks);
+    const paired=new Set(ranks).size<ranks.length;
+    const connected=high-low<=4;
+    const aceHigh=high===14;
+    const broadway=ranks.filter(r=>r>=10).length>=2;
+
+    let adv=0;
+    if(player.position==='UTG'||player.position==='HJ')adv+=aceHigh||broadway?.18:.04;
+    if(player.position==='CO'||player.position==='BTN')adv+=aceHigh?.10:.05;
+    if(player.position==='BB'){
+      if(connected)adv+=.14;
+      if(low<=7)adv+=.08;
+      if(aceHigh&&!paired)adv-=.08;
+    }
+    if(paired)adv+=.03;
+    return Math.max(-.2,Math.min(.25,adv));
+  }
+
   postflopDecision(player,legal){
     const f=this.postflopFeatures(player);
     const profile=this.preflopProfile(player);
@@ -555,22 +666,23 @@ export class HoldemDemo {
     const wasAggressor=this.lastAggressorNick===player.nick;
     const draw=f.flushDraw||f.straightDraw;
     const wet=f.monotone||f.connected;
-    const adjusted=Math.max(0,Math.min(1,f.strength+(profile.aggr-.5)*.10+(ip?.035:0)));
+    const rAdv=this.rangeAdvantage(player);
+    const adjusted=Math.max(0,Math.min(1,f.strength+(profile.aggr-.5)*.10+(ip?.035:0)+rAdv));
 
     // Facing a bet: use hand strength + pot odds + draws rather than raw hole-card power.
     if(facingBet){
       if(legal.canRaise && adjusted>.82 && spr>0.7){
         const mult=wet?3.0:2.6;
         const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*mult)));
-        return{type:'raise',amount:target};
+        this.recordBotStat(player,'RAISE');return{type:'raise',amount:target};
       }
-      if(draw && potOdds<=.34)return{type:'call'};
-      if(adjusted>=Math.max(.36,potOdds+.12))return{type:'call'};
+      if(draw && potOdds<=.34){this.recordBotStat(player,'CALL');return{type:'call'}};
+      if(adjusted>=Math.max(.36,potOdds+.12)){this.recordBotStat(player,'CALL');return{type:'call'}};
       if(legal.canRaise && adjusted>.58 && profile.aggr>.62 && ip && Math.random()<.18){
         const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*2.7)));
         return{type:'raise',amount:target};
       }
-      return{type:'fold'};
+      this.recordBotStat(player,'FOLD');return{type:'fold'};
     }
 
     // Checked to: c-bet/value/probe depending on profile, texture and position.
@@ -582,6 +694,8 @@ export class HoldemDemo {
       if(draw&&profile.aggr>.5)betFreq+=.10;
 
       if(Math.random()<Math.max(.05,Math.min(.92,betFreq))){
+        if(wasAggressor&&this.street==='flop')this.recordBotStat(player,'CBET');
+        this.recordBotStat(player,'RAISE');
         let frac=.33;
         if(adjusted>.78)frac=wet?.70:.55;
         else if(draw)frac=wet?.55:.40;
