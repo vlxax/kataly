@@ -68,7 +68,7 @@ export class TableView{
       seat.innerHTML=`
         <div class="v1-seat-cards"></div>
         <div class="v1-avatar">${p.nick.slice(0,2).toUpperCase()}</div>
-        <div class="v1-playerbox">
+        <div class="v1-playerbox"><i class="v1-dealer-button">D</i>
           <div class="v1-name">${p.nick}${p.nick===this.heroNick?' · YOU':''}<em></em></div>
           <div class="v1-stack">—</div>
         </div>
@@ -95,6 +95,10 @@ export class TableView{
 
   updateSnapshot(s){
     this.lastSnapshot=s;
+    this.seats.forEach((seat,idx)=>{
+      const d=seat.el.querySelector('.v1-dealer-button');
+      if(d)d.classList.toggle('show',idx===s.button);
+    });
     this.root.querySelector('#v1Hand').textContent=`HAND #${s.handNo}`;
     this.root.querySelector('#v1Level').textContent=`LVL ${s.level} · ${clock(s.levelRemaining)}`;
     this.root.querySelector('#v1Blinds').innerHTML=`${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · <i id="v1Players">${s.activePlayers}/${s.totalPlayers}</i>`;
@@ -308,4 +312,20 @@ export class TableView{
     c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});
     confirm.onclick=()=>onAction({type:'raise',amount:selected});
   }
+  toggleHistory(snapshot){
+    let drawer=this.root.querySelector('.v1-history-drawer');
+    if(drawer){drawer.remove();return;}
+    drawer=document.createElement('div');
+    drawer.className='v1-history-drawer';
+    const rows=(snapshot&&snapshot.handHistory?snapshot.handHistory:[]).slice(-24).map(x=>{
+      const label=(x.type||'').replaceAll('_',' ');
+      const amount=x.amountBB!=null?` · ${bb(x.amountBB)} BB`:'';
+      return `<div><b>${label}</b><span>${x.nick||''}${amount}</span></div>`;
+    }).join('');
+    drawer.innerHTML=`<header><b>HAND #${snapshot?snapshot.handNo:'—'}</b><button>×</button></header>
+      <section>${rows||'<p>История появится после первого действия.</p>'}</section>`;
+    drawer.querySelector('button').onclick=()=>drawer.remove();
+    this.root.appendChild(drawer);
+  }
+
 }

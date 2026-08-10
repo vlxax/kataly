@@ -315,3 +315,28 @@ Fast reg-focused pass:
 - Showdown и результат руки остаются на экране дольше.
 - Между руками увеличена пауза до 3.2 сек.
 - Сохранена текущая betting engine логика; этот pass специально сфокусирован на ритме и читаемости.
+
+## V1.4 — TABLE CORE / REG PASS
+Implemented in this pass:
+- Dealer button is now a first-class table element and moves with the engine button index.
+- Hand History drawer added to the live table.
+- Engine events are mirrored into per-hand history.
+- Bot timing is contextual: larger decisions visibly take longer.
+- Bot profiles are introduced as stable style biases rather than identical random actors.
+- Action controls receive a stronger poker-room hierarchy.
+- Side-pot construction is added as an isolated tested core utility.
+- Side-pot unit test covers unequal three-way all-ins and folded dead money.
+
+Important engineering note:
+The side-pot helper is deliberately NOT wired into pot awarding yet. Replacing award logic without a complete evaluator/eligibility integration would risk corrupting real hand results. The next core pass should integrate this helper into showdown settlement and add all-in/min-raise/reopen regression tests.
+
+## V1.5 — ENGINE TRUST
+This pass deliberately freezes decorative feature work and focuses on poker correctness.
+
+- Repaired the corrupted `event(type,payload={})` method introduced in V1.4.
+- Engine events are now safely mirrored into per-hand debug history.
+- Side-pot construction is used by the existing showdown settlement and awards are labelled MAIN POT / SIDE POT N.
+- Added chip-conservation invariant after settlement.
+- Added deterministic tests for event integrity, minimum raise, short all-in not reopening as a full raise, full raise behavior, side pots, and folded dead money.
+- Added 500 randomized side-pot conservation scenarios.
+- No claim is made that every tournament edge case is finished; reopening action across multiple short all-ins still needs a dedicated integration-level betting-round test.

@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=130';
-import { PokerEventBus } from './eventBus.js?v=130';
+import { createDeck, shuffle } from './deck.js?v=150';
+import { PokerEventBus } from './eventBus.js?v=150';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -94,7 +94,8 @@ export class HoldemDemo {
     this.button=0;this.handNo=0;this.pot=0;this.streetPot=0;this.board=[];this.street='waiting';
     this.phase='waiting';this.currentBet=0;this.lastFullRaise=bigBlind;
     this.currentActorSeat=null;this.currentActorNick=null;
-    this.deck=[];this.log=[];this.handActions=[];this.sessionHands=[];this.eliminations=[];this.decisionStartedAt=0;
+    this.handStartChipTotal=this.players.reduce((sum,p)=>sum+p.stack,0);
+    this.deck=[];this.log=[];this.handActions=[];this.handHistory=[];this.sessionHands=[];this.eliminations=[];this.decisionStartedAt=0;
     this.running=false;this.finished=false;
 
     this.onChange=onChange;this.onHeroDecision=onHeroDecision;
@@ -109,7 +110,9 @@ export class HoldemDemo {
 
   on(type,fn){return this.bus.on(type,fn)}
   event(type,payload={}){
-    return this.bus.emit(type,{handNo:this.handNo,street:this.street,...payload});
+    const eventPayload={handNo:this.handNo,street:this.street,...payload};
+    if(this.handHistory)this.handHistory.push({type,...eventPayload,at:Date.now()});
+    return this.bus.emit(type,eventPayload);
   }
   destroy(){clearInterval(this.timer);this.bus.clear()}
   hero(){return this.players.find(p=>p.nick===this.heroNick)}
@@ -223,7 +226,7 @@ export class HoldemDemo {
 
     this.updateLevel();this.running=true;this.handNo++;
     this.deck=shuffle(createDeck());this.board=[];this.pot=0;this.streetPot=0;this.street='preflop';this.phase='dealing';
-    this.handActions=[];this.log=[];this.currentBet=0;this.lastFullRaise=this.bb;
+    this.handActions=[];this.handHistory=[];this.log=[];this.currentBet=0;this.lastFullRaise=this.bb;
     this.currentActorSeat=null;this.currentActorNick=null;
 
     this.players.forEach(p=>{
@@ -399,7 +402,8 @@ export class HoldemDemo {
   }
 
   async botAction(player,legal){
-    await sleep(900 + Math.floor(Math.random()*1400));
+    const dramatic=(legal.toCallBB>=8 || (legal.potBB&&legal.toCallBB/legal.potBB>.65));
+    await sleep((dramatic?1500:650) + Math.floor(Math.random()*(dramatic?1900:1200)));
     let power=this.preflopStrength(player.hole);
     if(this.street!=='preflop' && this.board.length>=3){
       const rank=evaluate7(player.hole.concat(this.board));
@@ -437,7 +441,14 @@ export class HoldemDemo {
       const size=(level-prev)*participants.length;prev=level;
       if(size<=0)continue;
       const eligible=participants.map(x=>x.player).filter(p=>contenders.includes(p));
-      if(eligible.length)pots.push({size,eligible});
+      if(eligible.length){
+        pots.push({size,eligible});
+      }else if(pots.length){
+        // Dead unmatched upper layer: chips cannot disappear.
+        pots[pots.length-1].size+=size;
+      }else{
+        throw new Error('POT_WITHOUT_ELIGIBLE_PLAYER');
+      }
     }
     return pots;
   }
@@ -449,7 +460,8 @@ export class HoldemDemo {
     const ranked=new Map();contenders.forEach(p=>ranked.set(p.nick,evaluate7(p.hole.concat(this.board))));
     const pots=this.buildSidePots(contenders);const list=pots.length?pots:[{size:this.pot,eligible:contenders}];
     const awards=[];
-    for(const pot of list){
+    for(let potIndex=0;potIndex<list.length;potIndex++){
+      const pot=list[potIndex];
       let best=null,winners=[];
       for(const p of pot.eligible){
         const r=ranked.get(p.nick);
@@ -465,14 +477,25 @@ export class HoldemDemo {
         const w=winners.find(x=>x.seat===cursor);
         if(w){w.stack++;remainder--;}
       }
-      awards.push({amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best)});
-      this.event('POT_AWARDED',{amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best)});
+      const potLabel=potIndex===0?'MAIN POT':`SIDE POT ${potIndex}`;
+      awards.push({amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best),potLabel});
+      this.event('POT_AWARDED',{amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best),potLabel});
     }
     return awards;
   }
 
+  chipTotal(){
+    return this.players.reduce((sum,p)=>sum+p.stack,0)+this.pot;
+  }
+
+  assertChipConservation(expected){
+    const actual=this.players.reduce((sum,p)=>sum+p.stack,0);
+    if(actual!==expected)throw new Error(`CHIP_CONSERVATION_FAILED expected=${expected} actual=${actual}`);
+  }
+
   finishHand(){
     const awards=this.showdown(),winnerNames=[];
+    this.assertChipConservation(this.handStartChipTotal);
     awards.forEach(a=>a.winners.forEach(n=>{if(!winnerNames.includes(n))winnerNames.push(n)}));
     const newlyOut=[];
     this.players.forEach(p=>{
@@ -493,6 +516,18 @@ export class HoldemDemo {
 
     const hero=this.hero();
     if(this.active().length<=1||(hero&&hero.out))this.finishTournament();
+  }
+
+  _testSetState({players,currentBet=0,lastFullRaise=null,street='preflop',pot=null}){
+    this.players=players.map((p,i)=>({
+      seat:p.seat??i,nick:p.nick||`P${i}`,stack:p.stack??0,bet:p.bet??0,totalBet:p.totalBet??p.bet??0,
+      folded:!!p.folded,out:!!p.out,allIn:!!p.allIn,hole:p.hole||[],position:p.position||'',lastAction:''
+    }));
+    this.currentBet=currentBet;
+    this.lastFullRaise=lastFullRaise==null?this.bb:lastFullRaise;
+    this.street=street;
+    this.pot=pot==null?this.players.reduce((s,p)=>s+p.totalBet,0):pot;
+    return this;
   }
 
   finishTournament(){

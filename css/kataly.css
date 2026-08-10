@@ -670,3 +670,28 @@ button{cursor:pointer}
 .v1-turn-status.hero{color:#fff;text-shadow:0 0 18px rgba(255,46,125,.42)}
 .v1-controls button:disabled{opacity:.32;filter:saturate(.3)}
 .v1-waiting{letter-spacing:.025em}
+
+/* ===== V1.4 TABLE CORE ===== */
+.v1-playerbox{position:relative}
+.v1-dealer-button{display:none;position:absolute;left:-8px;top:-8px;width:18px;height:18px;border-radius:50%;
+ background:#f3f0e9;color:#111;font-size:8px;font-style:normal;font-weight:1000;place-items:center;
+ border:2px solid #090a0c;box-shadow:0 4px 12px rgba(0,0,0,.45);z-index:8}
+.v1-dealer-button.show{display:grid}
+.v1-name em{font-size:6px!important;font-weight:1000!important;letter-spacing:.05em}
+.v1-main-actions button{position:relative}
+.v1-main-actions button:nth-child(1){background:#17191e!important;color:#d4ced4!important}
+.v1-main-actions button:nth-child(2){background:#252832!important;color:#fff!important}
+.v1-main-actions button:nth-child(3){background:linear-gradient(180deg,#ff3a85,#d8165e)!important;color:#fff!important}
+.v1-presets button{font-weight:900!important}
+.v1-history-drawer{position:absolute;z-index:160;left:8px;right:8px;bottom:8px;max-height:54vh;border-radius:18px;
+ background:rgba(12,13,17,.98);border:1px solid rgba(255,255,255,.1);box-shadow:0 24px 70px rgba(0,0,0,.6);
+ overflow:hidden;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.v1-history-drawer header{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+ border-bottom:1px solid rgba(255,255,255,.07)}
+.v1-history-drawer header b{font-size:10px;letter-spacing:.08em}
+.v1-history-drawer header button{border:0;background:transparent;color:#aaa;font-size:24px}
+.v1-history-drawer section{padding:8px 12px 16px;overflow:auto;max-height:calc(54vh - 44px)}
+.v1-history-drawer section>div{display:flex;justify-content:space-between;gap:10px;padding:7px 2px;
+ border-bottom:1px solid rgba(255,255,255,.045)}
+.v1-history-drawer section b{font-size:7px;color:#d9d4d8}.v1-history-drawer section span{font-size:7px;color:#8f8990;text-align:right}
+.v1-history-drawer p{font-size:8px;color:#8f8990}

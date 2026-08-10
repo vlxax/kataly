@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js?v=130';
-import { TableView } from './tableView.js?v=130';
+import { HoldemDemo } from './engine.js?v=150';
+import { TableView } from './tableView.js?v=150';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -47,6 +47,8 @@ export class TableController{
 
   bindStatic(){
     this.root.querySelector('#v1Exit').onclick=()=>this.exit();
+    const historyBtn=this.root.querySelector('#v1History');
+    if(historyBtn)historyBtn.onclick=()=>this.view.toggleHistory(this.lastSnapshot);
     const speedBtn=this.root.querySelector('#v1Speed');
     if(speedBtn){
       speedBtn.onclick=()=>{
