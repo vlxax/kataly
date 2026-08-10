@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=220';
-import { PokerEventBus } from './eventBus.js?v=220';
+import { createDeck, shuffle } from './deck.js?v=230';
+import { PokerEventBus } from './eventBus.js?v=230';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -538,41 +538,73 @@ export class HoldemDemo {
     ][i%5];
   }
 
+  preflopContext(player){
+    const actions=(this.handActions||[]).filter(a=>a.street==='preflop');
+    const raises=actions.filter(a=>a.type==='raise'||a.type==='allin');
+    const calls=actions.filter(a=>a.type==='call');
+    return{unopened:raises.length===0,facingOpen:raises.length===1,facingThreeBet:raises.length>=2,raiseCount:raises.length,callerCount:calls.length};
+  }
+
+  shortStackShoveRange(stackBB,position){
+    const R=(xs)=>new Set(xs.split(/\s+/).filter(Boolean));
+    if(stackBB>18)return R('');
+    if(stackBB<=8)return R('22+ A2s+ A7o+ K8s+ KTo+ Q9s+ QJo J9s+ T9s');
+    if(stackBB<=12)return R('44+ A5s+ A9o+ KTs+ KQo QJs JTs');
+    return R('66+ A8s+ ATo+ KQs KJs QJs');
+  }
+
+  vsThreeBetRange(profile){
+    const R=(xs)=>new Set(xs.split(/\s+/).filter(Boolean));
+    if(profile.name==='NIT')return{call:R('QQ AKs'),jam:R('KK+ AKs AKo')};
+    if(profile.name==='LAG')return{call:R('JJ+ AQs+ AKo KQs'),jam:R('QQ+ AKs AKo A5s')};
+    if(profile.name==='CALLER')return{call:R('TT+ AQs+ AKo KQs'),jam:R('KK+ AKs')};
+    return{call:R('JJ+ AQs+ AKo'),jam:R('QQ+ AKs AKo')};
+  }
+
   preflopDecision(player,legal,power){
     const profile=this.preflopProfile(player);
     const code=this.normalizedHand(player.hole);
-    const unopened=this.currentBet<=this.bb;
-    const facingRaise=this.currentBet>this.bb;
+    const ctx=this.preflopContext(player);
     const openRange=this.positionRanges(player.position);
     const threeRange=this.threeBetRange(player.position,profile);
     const defend=this.defendRange(player.position,profile);
+    const shortJam=this.shortStackShoveRange(legal.stackBB,player.position);
+    const vs3=this.vsThreeBetRange(profile);
 
-    if(unopened){
-      const opens=this.inRange(code,openRange);
-      if(opens&&legal.canRaise){
+    if(legal.stackBB<=18&&this.inRange(code,shortJam)){
+      this.recordBotStat(player,'VPIP');this.recordBotStat(player,'PFR');this.recordBotStat(player,'RAISE');return{type:'allin'};
+    }
+    if(ctx.unopened){
+      if(this.inRange(code,openRange)&&legal.canRaise){
         this.recordBotStat(player,'VPIP');this.recordBotStat(player,'PFR');this.recordBotStat(player,'RAISE');
-        const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.bb*(player.position==='SB'?3:2.2))));
-        this.recordBotStat(player,'RAISE');return{type:'raise',amount:target};
+        const openSize=legal.stackBB<25?2.0:(player.position==='SB'?3.0:2.2);
+        return{type:'raise',amount:Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.bb*openSize)))};
       }
       if(legal.canCheck)return{type:'check'};
-      this.recordBotStat(player,'FOLD');
-      return{type:'fold'};
+      this.recordBotStat(player,'FOLD');return{type:'fold'};
     }
-
-    if(facingRaise){
+    if(ctx.facingOpen){
       if(this.inRange(code,threeRange)&&legal.canRaise){
         this.recordBotStat(player,'VPIP');this.recordBotStat(player,'PFR');this.recordBotStat(player,'3BET');this.recordBotStat(player,'RAISE');
-        const mult=(player.position==='SB'||player.position==='BB')?3.6:3.1;
+        const mult=(player.position==='SB'||player.position==='BB')?3.8:3.1;
         return{type:'raise',amount:Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*mult)))};
       }
-      if(this.inRange(code,defend)&&legal.toCallBB<=Math.max(14,legal.stackBB*.28)){
-        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'CALL');
-        return{type:'call'};
+      if(this.inRange(code,defend)&&legal.toCallBB<=Math.max(12,legal.stackBB*.22)){
+        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'CALL');return{type:'call'};
       }
-      this.recordBotStat(player,'FOLD');
-      return legal.canCheck?{type:'check'}:{type:'fold'};
+      this.recordBotStat(player,'FOLD');return legal.canCheck?{type:'check'}:{type:'fold'};
     }
-    return null;
+    if(ctx.facingThreeBet){
+      if(this.inRange(code,vs3.jam)&&legal.canRaise){
+        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'PFR');this.recordBotStat(player,'RAISE');
+        return legal.stackBB<=45?{type:'allin'}:{type:'raise',amount:Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet*2.2)))};
+      }
+      if(this.inRange(code,vs3.call)&&legal.toCallBB<=Math.max(16,legal.stackBB*.28)){
+        this.recordBotStat(player,'VPIP');this.recordBotStat(player,'CALL');return{type:'call'};
+      }
+      this.recordBotStat(player,'FOLD');return legal.canCheck?{type:'check'}:{type:'fold'};
+    }
+    return legal.canCheck?{type:'check'}:{type:'fold'};
   }
 
   postflopFeatures(player){

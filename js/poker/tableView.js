@@ -42,7 +42,7 @@ export class TableView{
             <div id="v1Deck" class="v1-deck">◆</div>
             <div id="v1ChipLayer" class="v1-chip-layer"></div>
             <div id="v1Board" class="v1-board"></div>
-            <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div>
+            <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div><div id="v1SessionInfo" class="v1-session-info">6-MAX MTT<br><span>Blinds 0.5 / 1 / 1 BBA</span></div>
           </div>
           <div id="v1Seats" class="v1-seats"></div>
           <div id="v1Banner" class="v1-banner"></div>
@@ -70,7 +70,7 @@ export class TableView{
         <div class="v1-seat-cards"></div>
         <div class="v1-avatar">${p.nick.slice(0,2).toUpperCase()}</div>
         <div class="v1-playerbox"><i class="v1-dealer-button">D</i>
-          <div class="v1-name">${p.nick}${p.nick===this.heroNick?' · YOU':''}<em></em></div>
+          <div class="v1-name">${p.nick}${p.nick===this.heroNick?' · YOU':''}<em></em></div><div class="v1-pos-badge"></div>
           <div class="v1-stack">—</div>
         </div>
         <div class="v1-bet"></div>
@@ -82,7 +82,7 @@ export class TableView{
         root:seat,cards:seat.querySelector('.v1-seat-cards'),
         stack:seat.querySelector('.v1-stack'),pos:seat.querySelector('.v1-name em'),
         bet:seat.querySelector('.v1-bet'),action:seat.querySelector('.v1-action'),
-        dealer:seat.querySelector('.v1-dealer'),ring:seat.querySelector('.v1-ring')
+        dealer:seat.querySelector('.v1-dealer'),ring:seat.querySelector('.v1-ring'),posBadge:seat.querySelector('.v1-pos-badge')
       });
     });
   }
@@ -90,9 +90,7 @@ export class TableView{
   seatPos(i,n){
     const heroIndex=Math.max(0,this.players.findIndex(p=>p.nick===this.heroNick));
     const rel=(i-heroIndex+n)%n;
-    const maps={
-      6:[[20,82],[17,57],[17,25],[50,10],[83,25],[83,57]]
-    };
+    const maps={6:[[11,83],[13,63],[12,26],[50,10],[88,27],[88,61]]};
     return (maps[n]||maps[6])[rel]||[50,50];
   }
 
@@ -106,6 +104,8 @@ export class TableView{
     this.root.querySelector('#v1Hand')?.replaceChildren(document.createTextNode(`HAND #${s.handNo}`));
     this.root.querySelector('#v1Level').textContent=`LVL ${s.level} · ${clock(s.levelRemaining)}`;
     this.root.querySelector('#v1Blinds').innerHTML=`${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · <i id="v1Players">${s.activePlayers}/${s.totalPlayers}</i>`;
+    const sessionInfo=this.root.querySelector('#v1SessionInfo');
+    if(sessionInfo)sessionInfo.innerHTML=`6-MAX MTT · HAND ${s.handNo}<br><span>Blinds ${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · ${s.activePlayers}/${s.totalPlayers}</span>`;
     const visiblePot=(s.settledPot!=null?s.settledPot:s.pot);
     this.root.querySelector('#v1Pot').textContent=money(visiblePot);
     this.root.querySelector('#v1PotBB').textContent=`${bb(visiblePot/s.bb)} BB`;
@@ -117,7 +117,7 @@ export class TableView{
         ? `<small>${Math.round(st.vpip/Math.max(1,st.hands)*100)}/${Math.round(st.pfr/Math.max(1,st.hands)*100)}/${Math.round(st.threeBet/Math.max(1,st.hands)*100)}</small>`
         : '';
       seat.stack.innerHTML=`<b>${money(p.stack)}</b><span>${bb(p.stackBB)} BB</span>${hud}`;
-      seat.pos.textContent=p.position?` ${p.position}`:'';
+      seat.pos.textContent='';if(seat.posBadge)seat.posBadge.textContent=p.position||'';
       seat.root.classList.toggle('folded',!!p.folded);
       seat.root.classList.toggle('out',!!p.out);
       seat.dealer.style.display=p.seat===s.button?'grid':'none';

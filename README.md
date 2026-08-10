@@ -407,3 +407,10 @@ of `seat.el.querySelector`.
 - Raise sizing opens upward instead of pushing the BET/RAISE control below the viewport.
 - Opponent actions remain next to the players; no bottom narration block.
 - Bot timing is contextual and personality-aware: occasional snap decisions, normal multi-second decisions, and long river / large-pot tanks.
+
+## V2.3 — DESIGNER ROOM
+- Rebuilt the table hierarchy to closely follow the supplied mobile poker-room screenshot while retaining KATALY branding.
+- Opponent seats emphasize avatar, name, chip stack, position badge and visible bet.
+- Added central hand/blinds/player session information.
+- Hero remains fixed at the bottom with large hole cards, position and stack.
+- Preflop bots now distinguish unopened pots, single open, 3bet+, defense and short-stack shove/fold.
