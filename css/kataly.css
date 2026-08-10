@@ -825,3 +825,9 @@ html,body{width:100%;min-height:100%;margin:0;background:#050608}
   .v1-room .v1-hero-strip{bottom:calc(125px + env(safe-area-inset-bottom))}
   .v1-room .v1-controls{height:108px}
 }
+
+/* ===== V1.8 REG ENGINE PASS ===== */
+.v1-history-drawer section>div.street{margin-top:7px;border-bottom:1px solid rgba(255,46,125,.24)}
+.v1-history-drawer section>div.street b{color:#ff5a96;letter-spacing:.12em}
+.v1-banner.win b{letter-spacing:.04em}
+.v1-banner.win span{max-width:92%;text-align:center}

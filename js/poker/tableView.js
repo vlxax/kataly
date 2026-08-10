@@ -255,9 +255,11 @@ export class TableView{
 
   showPotAward(e){
     const banner=this.root.querySelector('#v1Banner');
-    banner.innerHTML=`<b>${e.winners.join(', ')}</b><span>+${money(e.amount)}</span>`;
+    const pot=e.potLabel||'POT';
+    const amount=e.bb?`${bb(e.amount/e.bb)} BB`:money(e.amount);
+    banner.innerHTML=`<b>${pot} · ${e.winners.join(', ')}</b><span>${e.label||''} · ${amount}</span>`;
     banner.classList.add('show','win');
-    setTimeout(()=>banner.classList.remove('show'),2600);
+    setTimeout(()=>banner.classList.remove('show'),3200);
   }
 
   showHandResult(summary){

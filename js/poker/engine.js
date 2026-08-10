@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=160';
-import { PokerEventBus } from './eventBus.js?v=160';
+import { createDeck, shuffle } from './deck.js?v=180';
+import { PokerEventBus } from './eventBus.js?v=180';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -94,6 +94,7 @@ export class HoldemDemo {
     this.button=0;this.handNo=0;this.pot=0;this.streetPot=0;this.board=[];this.street='waiting';
     this.phase='waiting';this.currentBet=0;this.lastFullRaise=bigBlind;
     this.currentActorSeat=null;this.currentActorNick=null;
+    this.runoutAnnounced=false;
     this.handStartChipTotal=this.players.reduce((sum,p)=>sum+p.stack,0);
     this.deck=[];this.log=[];this.handActions=[];this.handHistory=[];this.sessionHands=[];this.eliminations=[];this.decisionStartedAt=0;
     this.running=false;this.finished=false;
@@ -179,14 +180,14 @@ export class HoldemDemo {
   }
   emit(){if(this.onChange)this.onChange(this.snapshot())}
 
-  postDead(player,amount,label){
-    const paid=Math.min(Math.max(0,Math.round(amount)),player.stack);
-    player.stack-=paid;player.totalBet+=paid;this.pot+=paid;this.streetPot+=paid;
+  postDead(player,amount,label='ANTE'){
+    const paid=Math.min(player.stack,Math.max(0,Math.round(amount)));
+    player.stack-=paid;
+    player.totalBet+=paid;
+    this.pot+=paid;
     if(player.stack===0)player.allIn=true;
-    player.lastAction=label;
-    this.log.push(`${player.nick}: ${label} ${paid}`);
-    this.event('FORCED_BET',{seat:player.seat,nick:player.nick,label,amount:paid,stack:player.stack,pot:this.pot});
-    this.emit();return paid;
+    this.event('FORCED_BET',{seat:player.seat,nick:player.nick,label,amount:paid,bet:player.bet,stack:player.stack,pot:this.pot,dead:true});
+    return paid;
   }
   take(player,amount,label){
     const paid=Math.min(Math.max(0,Math.round(amount)),player.stack);
@@ -200,6 +201,7 @@ export class HoldemDemo {
     this.streetPot=0;
     this.currentBet=0;this.lastFullRaise=this.bb;
   }
+  pace(ms){return sleep(this.eventPaceMs===0?0:ms)}
   burn(){if(this.deck.length)this.deck.pop()}
   dealBoard(count){
     for(let i=0;i<count;i++){
@@ -262,43 +264,65 @@ export class HoldemDemo {
         const card=this.deck.pop();p.hole.push(card);
         this.event('CARD_DEALT',{seat:p.seat,nick:p.nick,round,card:p.nick===this.heroNick?card:'XX'});
         this.emit();
-        await sleep(360);
+        await this.pace(360);
         cursor=this.nextLive(cursor);
       }
     }
 
     this.phase='action';this.emit();
-    await sleep(900);
+    await this.pace(900);
     const preflopStart=live.length===2?sbIndex:this.nextLive(bbIndex);
     await this.bettingRound(preflopStart);
 
     if(this.liveInHand().length>1){
+      if(this.bettingIsLocked()&&!this.runoutAnnounced){
+        this.runoutAnnounced=true;
+        this.event('ALLIN_RUNOUT',{players:this.liveInHand().map(p=>p.nick)});
+        this.emit();await this.pace(700);
+      }
       this.street='flop';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'flop'});
-      this.dealBoard(3);this.emit();await sleep(1100);
+      this.dealBoard(3);this.emit();await this.pace(1100);
       this.phase='action';this.emit();
-      await this.bettingRound(this.firstPostflopActor());
+      if(!this.bettingIsLocked())await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
+      if(this.bettingIsLocked()&&!this.runoutAnnounced){
+        this.runoutAnnounced=true;
+        this.event('ALLIN_RUNOUT',{players:this.liveInHand().map(p=>p.nick)});
+        this.emit();await this.pace(700);
+      }
       this.street='turn';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'turn'});
-      this.dealBoard(1);this.emit();await sleep(950);
+      this.dealBoard(1);this.emit();await this.pace(950);
       this.phase='action';this.emit();
-      await this.bettingRound(this.firstPostflopActor());
+      if(!this.bettingIsLocked())await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
+      if(this.bettingIsLocked()&&!this.runoutAnnounced){
+        this.runoutAnnounced=true;
+        this.event('ALLIN_RUNOUT',{players:this.liveInHand().map(p=>p.nick)});
+        this.emit();await this.pace(700);
+      }
       this.street='river';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'river'});
-      this.dealBoard(1);this.emit();await sleep(950);
+      this.dealBoard(1);this.emit();await this.pace(950);
       this.phase='action';this.emit();
-      await this.bettingRound(this.firstPostflopActor());
+      if(!this.bettingIsLocked())await this.bettingRound(this.firstPostflopActor());
     }
 
-    this.phase='showdown';this.event('SHOWDOWN_STARTED',{});this.emit();await sleep(1200);
+    this.phase='showdown';this.event('SHOWDOWN_STARTED',{});this.emit();await this.pace(1200);
     this.finishHand();
 
     if(!this.finished)this.button=this.nextLive(this.button);
     this.running=false;
+  }
+
+  bettingIsLocked(){
+    const actionable=this.canAct();
+    if(actionable.length===0)return true;
+    if(actionable.length===1)return actionable[0].bet>=this.currentBet;
+    return false;
   }
 
   async bettingRound(startIndex){
@@ -403,7 +427,9 @@ export class HoldemDemo {
 
   async botAction(player,legal){
     const dramatic=(legal.toCallBB>=8 || (legal.potBB&&legal.toCallBB/legal.potBB>.65));
-    await sleep((dramatic?1500:650) + Math.floor(Math.random()*(dramatic?1900:1200)));
+    const base=this.botDelayMs===0?0:(dramatic?1500:650);
+    const jitter=this.botDelayMs===0?0:Math.floor(Math.random()*(dramatic?1900:1200));
+    await sleep(base+jitter);
     let power=this.preflopStrength(player.hole);
     if(this.street!=='preflop' && this.board.length>=3){
       const rank=evaluate7(player.hole.concat(this.board));
@@ -454,7 +480,14 @@ export class HoldemDemo {
   }
   showdown(){
     const contenders=this.liveInHand();
-    if(contenders.length===1)return[{amount:this.pot,winners:[contenders[0]],label:'Без вскрытия'}];
+    if(contenders.length===1){
+      const winner=contenders[0];
+      const amount=this.pot;
+      winner.stack+=amount;
+      const award={amount,winners:[winner.nick],label:'Без вскрытия',potLabel:'POT',share:amount,bb:this.bb};
+      this.event('POT_AWARDED',award);
+      return[award];
+    }
 
     contenders.forEach(p=>this.event('CARDS_REVEALED',{seat:p.seat,nick:p.nick,cards:p.hole.slice()}));
     const ranked=new Map();contenders.forEach(p=>ranked.set(p.nick,evaluate7(p.hole.concat(this.board))));
@@ -479,7 +512,7 @@ export class HoldemDemo {
       }
       const potLabel=potIndex===0?'MAIN POT':`SIDE POT ${potIndex}`;
       awards.push({amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best),potLabel});
-      this.event('POT_AWARDED',{amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best),potLabel});
+      this.event('POT_AWARDED',{amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best),potLabel,share,bb:this.bb});
     }
     return awards;
   }

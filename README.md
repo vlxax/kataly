@@ -364,3 +364,12 @@ of `seat.el.querySelector`.
 - Полностью обновлена цепочка cache-busting: index → app → tableUI → tableController → tableView/engine.
 - Исправлен запуск старого закэшированного tableView с устаревшим seat.el DOM-контрактом.
 - Вертикальная геометрия стола V1.6 сохранена.
+
+## V1.8 — REG ENGINE PASS
+- Portrait mobile table preserved.
+- Explicit all-in runout: no fake check/check actions when betting is locked.
+- MAIN/SIDE POT award banner now names the pot and hand category.
+- HAND drawer now reads like poker action history by street.
+- Added 100-hand regression for crashes, duplicate cards and chip conservation.
+
+- Automated regression can disable choreography sleeps with `eventPaceMs=0`; production portrait timing is unchanged.

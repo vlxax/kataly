@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js?v=161';
-import { TableView } from './tableView.js?v=161';
+import { HoldemDemo } from './engine.js?v=180';
+import { TableView } from './tableView.js?v=180';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -39,6 +39,7 @@ export class TableController{
       this.view.showWaiting(names[e.street]||e.street.toUpperCase());
     });
     on('BOARD_CARD_DEALT',e=>this.view.dealBoardCard(e));
+    on('ALLIN_RUNOUT',()=>this.view.showWaiting('ALL-IN · решений больше нет · открываем борд…'));
     on('SHOWDOWN_STARTED',()=>this.view.showWaiting('SHOWDOWN · вскрываем карты…'));
     on('CARDS_REVEALED',e=>this.view.revealCards(e));
     on('POT_AWARDED',e=>this.view.showPotAward(e));
