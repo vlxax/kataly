@@ -236,3 +236,25 @@
 - после flop / turn / river есть короткая пауза перед действием.
 
 Это первый шаг к ритму реального мобильного poker-room: deal → wait → actions → board → actions.
+
+
+## V1.0 — TABLE REBUILD
+
+Полная пересборка одного 6-max poker-room table по event-driven архитектуре.
+
+Архитектура:
+PokerEngine → PokerEventBus → TableController → TableView
+
+Ключевые изменения:
+- TableView создаёт DOM один раз и больше не перерисовывает весь стол.
+- Карты, стеки, ставки и action labels обновляются адресно.
+- Добавлен PokerEventBus.
+- Engine эмитит события HAND_STARTED / FORCED_BET / CARD_DEALT / TURN_STARTED /
+  PLAYER_FOLDED / PLAYER_CHECKED / PLAYER_CALLED / PLAYER_RAISED / PLAYER_ALLIN /
+  BETTING_ROUND_COMPLETE / STREET_STARTED / BOARD_CARD_DEALT / SHOWDOWN_STARTED /
+  CARDS_REVEALED / POT_AWARDED / HAND_FINISHED.
+- Исправлен пропущенный flop betting round.
+- Раздача: forced bets → 2 круга карт → preflop action → flop action → turn action → river action → showdown.
+- Hero controls появляются только в ход Hero.
+- RAISE drawer открывается отдельно, как в реальном руме.
+- Новая рука стартует автоматически после короткой паузы.
