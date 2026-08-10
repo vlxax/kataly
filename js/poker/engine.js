@@ -172,6 +172,8 @@ export class HoldemDemo {
     this.street = 'waiting';
     this.currentBet = 0;
     this.lastFullRaise = bigBlind;
+    this.currentActorSeat = null;
+    this.currentActorNick = null;
 
     this.deck = [];
     this.log = [];
@@ -326,6 +328,8 @@ export class HoldemDemo {
       averageStackBB:avgStack / this.bb,
       heroStackBB:(hero ? hero.stack : 0) / this.bb,
       eliminations:this.eliminations.slice(),
+      currentActorSeat:this.currentActorSeat,
+      currentActorNick:this.currentActorNick,
       finished:this.finished
     };
   }
@@ -382,6 +386,8 @@ export class HoldemDemo {
     });
     this.currentBet = 0;
     this.lastFullRaise = this.bb;
+    this.currentActorSeat = null;
+    this.currentActorNick = null;
   }
 
   burn(){
@@ -562,6 +568,7 @@ export class HoldemDemo {
           actionableNow[0].bet >= this.currentBet
         )
       ){
+        this.currentActorSeat=null;this.currentActorNick=null;this.emit();
         return;
       }
 
@@ -573,6 +580,10 @@ export class HoldemDemo {
         !player.allIn &&
         player.stack > 0
       ){
+        this.currentActorSeat = player.seat;
+        this.currentActorNick = player.nick;
+        this.emit();
+
         const legal = this.legalFor(
           player,
           raiseRights.has(player.seat)
@@ -616,10 +627,14 @@ export class HoldemDemo {
         this.emit();
       }
 
-      if(this.liveInHand().length <= 1) return;
+      if(this.liveInHand().length <= 1){
+        this.currentActorSeat=null;this.currentActorNick=null;this.emit();return;
+      }
 
       const actionable = this.canAct();
-      if(actionable.length === 0) return;
+      if(actionable.length === 0){
+        this.currentActorSeat=null;this.currentActorNick=null;this.emit();return;
+      }
 
       if(
         actionable.length === 1 &&
@@ -632,7 +647,9 @@ export class HoldemDemo {
         p.bet === this.currentBet && acted.has(p.seat)
       );
 
-      if(closed) return;
+      if(closed){
+        this.currentActorSeat=null;this.currentActorNick=null;this.emit();return;
+      }
 
       idx = this.nextLive(idx);
     }

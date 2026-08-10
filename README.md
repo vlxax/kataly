@@ -189,3 +189,32 @@
 - side-pot conservation;
 - evaluator sanity checks;
 - stress run турнира до завершения.
+
+
+## V0.9 — REAL TABLE / POKER ROOM FLOW
+
+Причина отсутствующих кнопок в V0.8.x найдена:
+- `onHeroDecision()` рисовал кнопки,
+- но таймер движка делал `emit()` каждую секунду,
+- `render()` перерисовывал весь стол и заменял action panel обратно на «Боты думают…».
+То есть движок ждал решение Hero, а UI сам стирал кнопки.
+
+Исправлено:
+- pending Hero decision хранится отдельно и переживает любые re-render.
+- FOLD / CHECK / CALL / BET / RAISE / ALL-IN всегда видны именно в ход Hero.
+- 25 / 33 / 50 / 66 / POT / ALL-IN.
+- raise slider.
+- 18 секунд на решение; по таймауту CHECK или FOLD.
+- подсветка игрока, чей сейчас ход.
+- турнирный HUD: level, countdown, blinds, BBA, players.
+- pot в фишках и BB.
+- stacks в фишках и BB.
+- positions BTN/SB/BB/UTG/HJ/CO.
+- effective stack Hero.
+- ставки рядом с игроками.
+- action tags.
+- compact hand history.
+- после руки новая раздача начинается автоматически, как в poker-room, без модалки каждый раз.
+- отдельный Tournament Info по тапу на верхний HUD.
+
+Дизайн не копирует конкретный рум один-в-один: взята информационная архитектура настоящего мобильного poker-room и адаптирована под KATALY.
