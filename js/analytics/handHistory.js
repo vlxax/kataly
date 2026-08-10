@@ -7,7 +7,7 @@ export function createSessionRecord(lobby){
     seats:lobby.seats,
     buyIn:lobby.buyIn,
     stackBB:lobby.stackBB,
-    playerCount:lobby.players?.length || lobby.seats,
+    playerCount:(lobby.players && lobby.players.length) || lobby.seats,
     status:'engine_pending',
     hands:[],
     actions:[]
@@ -21,7 +21,7 @@ export function recordAction(session, action){
     stackBB:action.stackBB,
     potBB:action.potBB,
     action:action.action,
-    amountBB:action.amountBB ?? null,
-    responseMs:action.responseMs ?? null
+    amountBB:action.amountBB != null ? action.amountBB : null,
+    responseMs:action.responseMs != null ? action.responseMs : null
   });
 }

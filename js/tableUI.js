@@ -24,7 +24,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
     onHandEnd:hand=>{lastHand=hand;setTimeout(()=>{if(!ending)showHandResult()},300)},
     onTournamentEnd:r=>{tournamentResult=r;ending=true;setTimeout(showTournamentResult,380)}
   });
-  heroStart=engine.hero()?.stack||10000;
+  heroStart=(engine.hero() && engine.hero().stack)||10000;
 
   function seatPos(i,n){
     const maps={
@@ -49,7 +49,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
         const [x,y]=seatPos(i,snapshot.players.length);
         const hero=p.nick===heroNick;
         return `<div class="game-seat ${hero?'hero-seat':''} ${p.folded?'folded':''} ${p.out?'out':''}" style="left:${x}%;top:${y}%">
-          <div class="seat-cards">${p.hole?.map(c=>cardHTML(c,c==='XX')).join('')||''}</div>
+          <div class="seat-cards">${(p.hole?p.hole.map(c=>cardHTML(c,c==='XX')).join(''):'')}</div>
           <div class="seat-name">${p.nick}${hero?' · YOU':''} <em>${p.position||''}</em></div>
           <div class="seat-stack">${money(p.stack)} · <b>${bb(p.stackBB)} BB</b></div>
           ${i===snapshot.button?'<div class="dealer">D</div>':''}
@@ -62,7 +62,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
     </div>
     <div class="action-log">${snapshot.log.map(x=>`<div>${x}</div>`).join('')}</div>
     <div class="decision-area" id="decisionArea"><div class="waiting-copy">Боты думают…</div></div>`;
-    root.querySelector('#leaveGame').onclick=()=>{if(confirm('Выйти из тестовой сессии?')){root.remove();onExit?.()}};
+    root.querySelector('#leaveGame').onclick=()=>{if(confirm('Выйти из тестовой сессии?')){root.remove();onExit && onExit()}};
   }
   function renderDecision(legal){
     const area=root.querySelector('#decisionArea'); if(!area)return;
@@ -78,9 +78,9 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
         <span id="raiseValue"></span>
       </div>`;
     const range=area.querySelector('#raiseRange'), val=area.querySelector('#raiseValue');
-    const sync=()=>val.textContent=`до ${money(+range.value)} · ${bb(+range.value/legal.bb)} BB`;sync();range.oninput=sync; area.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{range.value=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(legal.pot*+b.dataset.size)));sync()}); area.querySelector('#allInBtn').onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">ALL-IN</div>';r?.({type:'allin'})};
-    area.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">Ход принят</div>';r?.({type:b.dataset.a})});
-    area.querySelector('#raiseBtn').onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">Ход принят</div>';r?.({type:'raise',amount:+range.value})};
+    const sync=()=>val.textContent=`до ${money(+range.value)} · ${bb(+range.value/legal.bb)} BB`;sync();range.oninput=sync; area.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{range.value=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(legal.pot*+b.dataset.size)));sync()}); area.querySelector('#allInBtn').onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">ALL-IN</div>';if(r)r({type:'allin'})};
+    area.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">Ход принят</div>';if(r)r({type:b.dataset.a})});
+    area.querySelector('#raiseBtn').onclick=()=>{const r=resolveHero;resolveHero=null;area.innerHTML='<div class="waiting-copy">Ход принят</div>';if(r)r({type:'raise',amount:+range.value})};
   }
   function showHandResult(){
     if(!lastHand || ending)return;
@@ -102,7 +102,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
     overlay.querySelector('#finishSession').onclick=()=>{
       const hero=engine.hero();
       const live=engine.active().length;
-      tournamentResult={heroPlace:hero?.out?(engine.eliminations.find(x=>x.nick===heroNick)?.place||live+1):live,totalPlayers:engine.players.length,winner:null,earlyExit:true};
+      tournamentResult={heroPlace:hero && hero.out?((engine.eliminations.find(x=>x.nick===heroNick)||{}).place||live+1):live,totalPlayers:engine.players.length,winner:null,earlyExit:true};
       overlay.remove();showTournamentResult();
     };
   }
@@ -116,7 +116,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
 
   function showTournamentResult(){
     if(!tournamentResult)return;
-    document.querySelector('.hand-result')?.remove();
+    {const old=document.querySelector('.hand-result');if(old)old.remove();}
     const hero=engine.hero();
     const place=tournamentResult.heroPlace||engine.active().length;
     const prize=payoutFor(place,engine.players.length,lobby.buyIn);
@@ -128,7 +128,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
       <p>${engine.handNo} рук · финальные блайнды ${engine.sb}/${engine.bb}</p>
       <div class="tournament-summary">
         <div><span>ПРИЗ</span><b>${prize.toLocaleString('ru-RU')} 🪙</b></div>
-        <div><span>ФИНИШНЫЙ СТЕК</span><b>${money(hero?.stack||0)}</b></div>
+        <div><span>ФИНИШНЫЙ СТЕК</span><b>${money((hero && hero.stack)||0)}</b></div>
         <div><span>ИГРОКОВ</span><b>${engine.players.length}</b></div>
         <div><span>ВЫЛЕТОВ ДО ФИНИША</span><b>${engine.eliminations.length}</b></div>
       </div>
@@ -142,7 +142,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
         handHistory:[...(engine.sessionHands||[])],
         actions:(engine.sessionHands||[]).flatMap(h=>h.actions||[]),
         stackStart:heroStart,
-        stackEnd:hero?.stack||0,
+        stackEnd:(hero && hero.stack)||0,
         lastHand,
         tournament:{
           ...tournamentResult,
@@ -151,7 +151,7 @@ export function mountPokerTable({lobby, heroNick, onExit, onSessionEnd}){
           finalSB:engine.sb,finalBB:engine.bb
         }
       };
-      overlay.remove();root.remove();onSessionEnd?.(payload);
+      overlay.remove();root.remove();onSessionEnd && onSessionEnd(payload);
     };
   }
   engine.startHand();

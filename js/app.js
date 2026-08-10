@@ -11,7 +11,7 @@ const app = document.getElementById('app');
 
 function money(n){ return new Intl.NumberFormat('ru-RU').format(n) + ' 🪙'; }
 function toast(text){
-  document.querySelector('.toast')?.remove();
+  { const oldToast=document.querySelector('.toast'); if(oldToast) oldToast.remove(); }
   const el=document.createElement('div'); el.className='toast'; el.textContent=text;
   document.body.appendChild(el); setTimeout(()=>el.remove(),2200);
 }
@@ -188,7 +188,7 @@ function openLobby(lobby){
       onExit: ()=>render(),
       onSessionEnd: (result)=>{
         const chipDelta = Math.round((result.stackEnd-result.stackStart)*10)/10;
-        const reward = result.tournament?.prize || 0;
+        const reward = (result.tournament && result.tournament.prize) || 0;
         state.wallet += reward;
 
         const session={
@@ -205,7 +205,7 @@ function openLobby(lobby){
           heroStackEnd:result.stackEnd,
           chipDelta,
           reward,
-          place:result.tournament?.heroPlace||null,
+          place:(result.tournament && result.tournament.heroPlace) || null,
           tournament:result.tournament||null,
           lastHand:result.lastHand,
           handHistory:result.handHistory||[],
@@ -241,8 +241,8 @@ function showSessionResult(session){
 
     <div class="analysis-teaser">
       <div class="eyebrow">POKER BRAIN</div>
-      <b>Оценка сессии: ${session.analysis?.overall||0}/100</b>
-      <span>${session.analysis?.errors?.length||0} ошибок · ${session.analysis?.warnings?.length||0} спорных решений · ${session.analysis?.stats?.decisions||0} решений записано.</span>
+      <b>Оценка сессии: ${(session.analysis && session.analysis.overall) || 0}/100</b>
+      <span>${(session.analysis && session.analysis.errors && session.analysis.errors.length) || 0} ошибок · ${(session.analysis && session.analysis.warnings && session.analysis.warnings.length) || 0} спорных решений · ${(session.analysis && session.analysis.stats && session.analysis.stats.decisions) || 0} решений записано.</span>
     </div>
 
     <button class="btn btn-primary" id="toHistory" style="width:100%">ПОСМОТРЕТЬ СЕССИЮ</button>
@@ -298,7 +298,7 @@ function renderStats(){
   const itm=sessions.filter(s=>s.place && s.place<=3).length;
   const bestPlace=sessions.filter(s=>s.place).length?Math.min(...sessions.filter(s=>s.place).map(s=>s.place)):null;
   const analyses=sessions.map(s=>s.analysis).filter(Boolean);
-  const avgMetric=(key)=>analyses.length?Math.round(analyses.reduce((sum,a)=>sum+(a[key]??0),0)/analyses.filter(a=>a[key]!=null).length):null;
+  const avgMetric=(key)=>analyses.length?Math.round(analyses.reduce((sum,a)=>sum+((a[key])!=null?(a[key]):0),0)/analyses.filter(a=>a[key]!=null).length):null;
   const pfScore=avgMetric('preflop'), postScore=avgMetric('postflop'), sizingScore=avgMetric('sizing'), disciplineScore=avgMetric('discipline');
   shell(`
     <div class="section-head" style="margin-top:4px"><h2>Статистика</h2><span>по сыгранным сессиям</span></div>
@@ -308,15 +308,15 @@ function renderStats(){
       <div><span>РЕЗУЛЬТАТ</span><b class="${net>=0?'good':'bad'}">${net>0?'+':''}${Math.round(net*10)/10} BB</b></div>
       <div><span>ПОБЕД</span><b>${sessions.length?Math.round(wins/sessions.length*100):0}%</b></div>
       <div><span>ITM</span><b>${sessions.length?Math.round(itm/sessions.length*100):0}%</b></div>
-      <div><span>ЛУЧШЕЕ МЕСТО</span><b>${bestPlace??'—'}</b></div>
+      <div><span>ЛУЧШЕЕ МЕСТО</span><b>${bestPlace!=null?bestPlace:'—'}</b></div>
     </div>
 
     <div class="section-head"><h2>Игровой профиль</h2><span>следующий слой</span></div>
     <div class="card pokerbrain-preview">
-      <div class="metric-row"><span>Префлоп</span><b>${pfScore??'—'}</b><small>средняя оценка решений</small></div>
-      <div class="metric-row"><span>Постфлоп</span><b>${postScore??'—'}</b><small>флоп + тёрн + ривер</small></div>
-      <div class="metric-row"><span>Сайзинги</span><b>${sizingScore??'—'}</b><small>оценка выбранных размеров</small></div>
-      <div class="metric-row"><span>Дисциплина</span><b>${disciplineScore??'—'}</b><small>штраф за повторяющиеся ошибки</small></div>
+      <div class="metric-row"><span>Префлоп</span><b>${pfScore!=null?pfScore:'—'}</b><small>средняя оценка решений</small></div>
+      <div class="metric-row"><span>Постфлоп</span><b>${postScore!=null?postScore:'—'}</b><small>флоп + тёрн + ривер</small></div>
+      <div class="metric-row"><span>Сайзинги</span><b>${sizingScore!=null?sizingScore:'—'}</b><small>оценка выбранных размеров</small></div>
+      <div class="metric-row"><span>Дисциплина</span><b>${disciplineScore!=null?disciplineScore:'—'}</b><small>штраф за повторяющиеся ошибки</small></div>
     </div>
   `);
 }
@@ -335,9 +335,9 @@ function showSessionDetails(id){
       <div><span>PFR*</span><b>${a.stats.pfr}%</b></div>
     </div>
     <div class="brain-score-grid">
-      <div><span>Префлоп</span><b>${a.preflop??'—'}</b></div>
-      <div><span>Постфлоп</span><b>${a.postflop??'—'}</b></div>
-      <div><span>Сайзинги</span><b>${a.sizing??'—'}</b></div>
+      <div><span>Префлоп</span><b>${a.preflop!=null?a.preflop:'—'}</b></div>
+      <div><span>Постфлоп</span><b>${a.postflop!=null?a.postflop:'—'}</b></div>
+      <div><span>Сайзинги</span><b>${a.sizing!=null?a.sizing:'—'}</b></div>
       <div><span>Дисциплина</span><b>${a.discipline}</b></div>
     </div>
     <p class="tiny-note">* Пока это учебные метрики прототипа, рассчитанные по записанным решениям Hero, а не полноценный HUD.</p>
@@ -361,9 +361,9 @@ function showAnalysisStub(id){
     </div>
 
     <div class="brain-score-grid compact">
-      <div><span>Префлоп</span><b>${a.preflop??'—'}</b></div>
-      <div><span>Постфлоп</span><b>${a.postflop??'—'}</b></div>
-      <div><span>Сайзинг</span><b>${a.sizing??'—'}</b></div>
+      <div><span>Префлоп</span><b>${a.preflop!=null?a.preflop:'—'}</b></div>
+      <div><span>Постфлоп</span><b>${a.postflop!=null?a.postflop:'—'}</b></div>
+      <div><span>Сайзинг</span><b>${a.sizing!=null?a.sizing:'—'}</b></div>
       <div><span>Дисциплина</span><b>${a.discipline}</b></div>
     </div>
 

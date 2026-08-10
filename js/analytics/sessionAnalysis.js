@@ -2,7 +2,7 @@
 const RV={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 
 function heroActions(hands,heroNick){
-  return hands.flatMap(h=>h.actions.filter(a=>a.player===heroNick).map(a=>({...a,hand:h})));
+  return [].concat.apply([], hands.map(function(h){return h.actions.filter(function(a){return a.player===heroNick}).map(function(a){return Object.assign({},a,{hand:h})})}));
 }
 function preflopPower(cards=[]){
   if(cards.length<2)return .5;
@@ -33,7 +33,7 @@ export function analyzeSession({hands=[],heroNick}){
   const actions=heroActions(hands,heroNick);
   const tagged=actions.map(classify);
   const byStreet={preflop:[],flop:[],turn:[],river:[]};
-  tagged.forEach(a=>byStreet[a.street]?.push(a));
+  tagged.forEach(a=>{if(byStreet[a.street])byStreet[a.street].push(a)});
   const avg=arr=>arr.length?Math.round(arr.reduce((s,x)=>s+x.score,0)/arr.length):null;
   const preflop=avg(byStreet.preflop), post=avg([...byStreet.flop,...byStreet.turn,...byStreet.river]);
   const sizingActs=tagged.filter(a=>a.action==='raise');

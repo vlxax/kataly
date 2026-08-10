@@ -118,3 +118,9 @@
 - Исправлен Safari/WebKit parse crash.
 - Конструкции `pair?.25`, `suited?.07`, `condition?.08` были двусмысленно записанными ternary-выражениями.
 - Они заменены на обычные `condition ? value : 0`.
+
+
+## V0.7.3 — LEGACY SAFARI
+- Удалены ВСЕ optional chaining `?.` и nullish coalescing `??`.
+- Убраны `flatMap` из критического пути.
+- Цель: совместимость со старым Safari/WebKit, а не только современным Chrome.
