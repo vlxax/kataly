@@ -1,10 +1,10 @@
-import { analyzeSession } from './analytics/sessionAnalysis.js?v=150';
-import { mountPokerTable } from './tableUI.js?v=150';
+import { analyzeSession } from './analytics/sessionAnalysis.js?v=160';
+import { mountPokerTable } from './tableUI.js?v=160';
 
-import { state, saveState } from './state.js?v=150';
-import { makeBots } from './bots/botEngine.js?v=150';
-import { createInvite, mockIncomingInvite } from './multiplayer/invites.js?v=150';
-import { createLobby } from './multiplayer/lobby.js?v=150';
+import { state, saveState } from './state.js?v=160';
+import { makeBots } from './bots/botEngine.js?v=160';
+import { createInvite, mockIncomingInvite } from './multiplayer/invites.js?v=160';
+import { createLobby } from './multiplayer/lobby.js?v=160';
 
 const $ = (q) => document.querySelector(q);
 const app = document.getElementById('app');

@@ -340,3 +340,21 @@ This pass deliberately freezes decorative feature work and focuses on poker corr
 - Added deterministic tests for event integrity, minimum raise, short all-in not reopening as a full raise, full raise behavior, side pots, and folded dead money.
 - Added 500 randomized side-pot conservation scenarios.
 - No claim is made that every tournament edge case is finished; reopening action across multiple short all-ins still needs a dedicated integration-level betting-round test.
+
+## V1.5.1 — SEAT RENDER FIX
+Hotfix for the runtime crash visible immediately after table load:
+`undefined is not an object (evaluating 'seat.el.querySelector')`.
+
+Cause: the seat cache stores `{root, cards, stack, pos, bet, action, dealer, ring}`, but
+`updateSnapshot()` still referenced an obsolete `seat.el` field. It now uses the cached
+`seat.dealer`/`seat.root` contract consistently. A regression test rejects reintroduction
+of `seat.el.querySelector`.
+
+## V1.6 — PORTRAIT MOBILE TABLE
+- Rebuilt the table geometry for a portrait phone viewport.
+- 6-max seats now wrap a vertically oriented oval table.
+- Hero is positioned at the bottom like a mobile poker client.
+- Opponents are distributed top / upper sides / lower sides.
+- Board and pot stay in the center of a tall felt.
+- Hero strip and action controls are fixed to the lower phone area.
+- Desktop preview is constrained to a phone-width column instead of stretching into a horizontal table.

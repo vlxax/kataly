@@ -88,7 +88,7 @@ export class TableView{
 
   seatPos(i,n){
     const maps={
-      6:[[50,83],[15,69],[15,24],[50,10],[85,24],[85,69]]
+      6:[[50,8],[84,25],[88,61],[50,87],[12,61],[16,25]]
     };
     return (maps[n]||maps[6])[i]||[50,50];
   }
@@ -96,10 +96,11 @@ export class TableView{
   updateSnapshot(s){
     this.lastSnapshot=s;
     this.seats.forEach((seat,idx)=>{
-      const d=seat.el.querySelector('.v1-dealer-button');
-      if(d)d.classList.toggle('show',idx===s.button);
+      // Seat objects expose `root` and a cached `dealer` node; there is no `el`.
+      // Keep dealer rendering on the same DOM contract used everywhere else.
+      if(seat.dealer)seat.dealer.style.display=idx===s.button?'grid':'none';
     });
-    this.root.querySelector('#v1Hand').textContent=`HAND #${s.handNo}`;
+    this.root.querySelector('#v1Hand')?.replaceChildren(document.createTextNode(`HAND #${s.handNo}`));
     this.root.querySelector('#v1Level').textContent=`LVL ${s.level} · ${clock(s.levelRemaining)}`;
     this.root.querySelector('#v1Blinds').innerHTML=`${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · <i id="v1Players">${s.activePlayers}/${s.totalPlayers}</i>`;
     const visiblePot=(s.settledPot!=null?s.settledPot:s.pot);

@@ -695,3 +695,133 @@ button{cursor:pointer}
  border-bottom:1px solid rgba(255,255,255,.045)}
 .v1-history-drawer section b{font-size:7px;color:#d9d4d8}.v1-history-drawer section span{font-size:7px;color:#8f8990;text-align:right}
 .v1-history-drawer p{font-size:8px;color:#8f8990}
+
+/* ===== V1.6 PORTRAIT MOBILE TABLE ===== */
+html,body{width:100%;min-height:100%;margin:0;background:#050608}
+.poker-room,.v1-room{background:#050608}
+.v1-room .v1-shell{
+  width:100%;
+  max-width:430px;
+  height:100dvh;
+  min-height:100dvh;
+  margin:0 auto;
+  overflow:hidden;
+  position:relative;
+  background:
+    radial-gradient(circle at 50% 36%,rgba(28,82,61,.16),transparent 35%),
+    linear-gradient(180deg,#07090b 0%,#050608 100%);
+}
+.v1-room .v1-top{
+  left:12px;right:12px;
+  top:calc(8px + env(safe-area-inset-top));
+  height:48px;
+}
+.v1-room .v1-table-stage{
+  position:absolute;
+  left:0;right:0;
+  top:calc(60px + env(safe-area-inset-top));
+  bottom:calc(184px + env(safe-area-inset-bottom));
+  min-height:0;
+}
+.v1-room .v1-felt{
+  left:8%;
+  right:8%;
+  top:1%;
+  bottom:1%;
+  border-radius:48% / 27%;
+  border-width:9px;
+  background:
+    radial-gradient(ellipse at 50% 45%,#215c49 0%,#153e31 47%,#0c241c 76%,#08120f 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.035),
+    inset 0 0 90px rgba(0,0,0,.52),
+    0 20px 55px rgba(0,0,0,.48);
+}
+.v1-room .v1-felt:before{
+  border-radius:48% / 27%;
+}
+.v1-room .v1-board{
+  top:43%;
+  gap:3px;
+}
+.v1-room .v1-pot{
+  top:54%;
+  min-width:96px;
+}
+.v1-room .v1-deck{
+  top:31%;
+}
+.v1-room .v1-seat{
+  width:94px;
+  transform:translate(-50%,-50%);
+}
+.v1-room .v1-playerbox{
+  min-width:76px;
+  padding:7px 5px 5px;
+  border-radius:9px;
+}
+.v1-room .v1-avatar{
+  width:31px;
+  height:31px;
+  margin-bottom:-7px;
+}
+.v1-room .v1-name{
+  font-size:7px;
+}
+.v1-room .v1-stack b{
+  font-size:9px;
+}
+.v1-room .v1-stack span{
+  font-size:5px;
+}
+.v1-room .v1-seat-cards{
+  min-height:26px;
+  height:26px;
+}
+.v1-room .v1-seat-cards .v1-card{
+  width:19px;
+  height:27px;
+}
+.v1-room .v1-bet{
+  top:calc(100% + 3px);
+}
+.v1-room .v1-action{
+  right:-10px;
+  top:28px;
+}
+.v1-room .v1-hero-strip{
+  left:10px;right:10px;
+  bottom:calc(132px + env(safe-area-inset-bottom));
+  height:46px;
+  z-index:40;
+}
+.v1-room .v1-controls{
+  left:10px;right:10px;
+  bottom:calc(8px + env(safe-area-inset-bottom));
+  height:116px;
+  min-height:116px;
+  z-index:42;
+  padding:7px;
+}
+.v1-room .v1-main-actions button{
+  height:44px;
+  font-size:10px;
+}
+.v1-room .v1-context{
+  margin-bottom:5px;
+}
+.v1-room .v1-waiting{
+  height:100px;
+}
+.v1-room .v1-history-drawer{
+  left:8px;right:8px;
+  bottom:calc(8px + env(safe-area-inset-bottom));
+}
+@media (min-width:700px){
+  .v1-room .v1-shell{max-width:430px}
+}
+@media (max-height:740px){
+  .v1-room .v1-table-stage{bottom:calc(176px + env(safe-area-inset-bottom))}
+  .v1-room .v1-hero-strip{bottom:calc(125px + env(safe-area-inset-bottom))}
+  .v1-room .v1-controls{height:108px}
+}
