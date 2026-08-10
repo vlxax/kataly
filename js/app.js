@@ -74,7 +74,7 @@ function renderHome(){
     </div>
   `);
 
-  $('#createTable').onclick=()=>openCreate(false);
+  $('#createTable').onclick=()=>{state.view='players';saveState();render();};
   $('#botTable').onclick=()=>openCreate(true);
   document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{
     const inv=state.invites.find(x=>x.id===b.dataset.accept);
@@ -171,6 +171,88 @@ function openLobby(lobby){
   };
 }
 
+
+const DEMO_PLAYERS = [
+  {nick:'GTO_Monkey',level:26,type:'Регуляр',avatar:'GT'},
+  {nick:'AK_Shooter',level:19,type:'Агрессор',avatar:'AK'},
+  {nick:'Fish_Whisperer',level:15,type:'Любитель',avatar:'FW'},
+  {nick:'Bluff_Queen',level:31,type:'Профи',avatar:'BQ'},
+  {nick:'NitOnline',level:22,type:'Регуляр',avatar:'NO'},
+  {nick:'RiverPolice',level:18,type:'Дисциплина',avatar:'RP'},
+  {nick:'PohuiCall',level:14,type:'Любопытный',avatar:'PC'}
+];
+
+function renderPlayers(){
+  const selected = new Set();
+  shell(`
+    <div class="players-head">
+      <button class="back-btn" id="playersBack">‹</button>
+      <div><h1>ИГРОКИ</h1><p>Собери компанию. Пустые места займут боты.</p></div>
+    </div>
+    <div class="tabs"><button class="tab active">ИГРОКИ</button><button class="tab" data-go-invites>ПРИГЛАШЕНИЯ</button><button class="tab" data-go-history>ИСТОРИЯ</button></div>
+    <input class="search" id="playerSearch" placeholder="⌕  Поиск игрока" autocomplete="off">
+    <div class="online-title"><span>ОНЛАЙН</span><b>${DEMO_PLAYERS.length}</b></div>
+    <div class="card" style="padding:3px 13px" id="playerList"></div>
+    <div class="table-builder" id="tableBuilder">
+      <div class="builder-top"><b>ТВОЙ СТОЛ · <span id="seatCount" style="color:white">1/6</span></b><span id="botCount">+ 5 ботов при старте</span></div>
+      <div class="builder-people" id="builderPeople"></div>
+      <div class="builder-actions"><button class="btn btn-secondary" id="botsNow">СРАЗУ С БОТАМИ</button><button class="btn btn-primary" id="continueTable">НАСТРОИТЬ СТОЛ</button></div>
+    </div>
+  `);
+
+  const list=$('#playerList'), search=$('#playerSearch');
+  function drawList(){
+    const q=search.value.trim().toLowerCase();
+    const rows=DEMO_PLAYERS.filter(p=>p.nick.toLowerCase().includes(q)||p.type.toLowerCase().includes(q));
+    list.innerHTML=rows.length?rows.map(p=>`<div class="player-row">
+      <div class="avatar" style="width:42px;height:42px;border-radius:13px">${p.avatar}</div>
+      <div class="player-info"><h3><span class="online-dot"></span>${p.nick}</h3><p>Уровень ${p.level} · ${p.type}</p></div>
+      <button class="invite-btn ${selected.has(p.nick)?'invited':''}" data-player="${p.nick}">${selected.has(p.nick)?'ПРИГЛАШЁН':'ПРИГЛАСИТЬ'}</button>
+    </div>`).join(''):'<div class="empty">Никого не нашли.</div>';
+    list.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>{
+      const nick=b.dataset.player;
+      if(selected.has(nick)) selected.delete(nick); else if(selected.size<5) selected.add(nick); else return toast('Для 6-max уже достаточно игроков');
+      drawList();drawBuilder();
+    });
+  }
+  function drawBuilder(){
+    const real=[state.nick,...selected];
+    $('#seatCount').textContent=`${real.length}/6`;
+    $('#botCount').textContent=real.length<6?`+ ${6-real.length} ${real.length===5?'бот':'ботов'} при старте`:'стол заполнен';
+    $('#builderPeople').innerHTML=[...real.map(n=>`<div class="mini-avatar">${n.slice(0,2).toUpperCase()}</div>`),...Array(6-real.length).fill(0).map(()=>`<div class="mini-avatar empty">BOT</div>`)].join('');
+  }
+  search.oninput=drawList; drawList();drawBuilder();
+  $('#playersBack').onclick=()=>{state.view='home';saveState();render()};
+  document.querySelector('[data-go-invites]').onclick=()=>{state.view='invites';saveState();render()};
+  document.querySelector('[data-go-history]').onclick=()=>{state.view='history';saveState();render()};
+  $('#botsNow').onclick=()=>openCreate(true);
+  $('#continueTable').onclick=()=>openCreateWithPlayers([...selected]);
+}
+
+function openCreateWithPlayers(selectedPlayers=[]){
+  const wrap=document.createElement('div');wrap.className='modal-backdrop';
+  wrap.innerHTML=`<div class="sheet">
+    <div class="eyebrow">ШАГ 2 · НАСТРОЙКИ СТОЛА</div><h2>Почти погнали.</h2>
+    <p>${selectedPlayers.length?`Ты позвала: ${selectedPlayers.join(', ')}. Остальные места при старте займут боты.`:'Ты пока никого не позвала — значит, боты сегодня твои лучшие друзья.'}</p>
+    <div class="field"><label>ФОРМАТ</label><div class="option-grid"><button class="option active" data-seats="6"><b>6-MAX</b><span>быстрее и агрессивнее</span></button><button class="option" data-seats="9"><b>9-MAX</b><span>полный стол</span></button></div></div>
+    <div class="field"><label>БАЙ-ИН</label><div class="option-grid"><button class="option active" data-buyin="1000"><b>1 000 🪙</b><span>базовый</span></button><button class="option" data-buyin="5000"><b>5 000 🪙</b><span>уже неприятно</span></button></div></div>
+    <div class="field"><label>СТАРТОВЫЙ СТЕК</label><div class="option-grid"><button class="option active" data-stack="100"><b>100 BB</b><span>стандарт</span></button><button class="option" data-stack="50"><b>50 BB</b><span>быстрая сессия</span></button></div></div>
+    <button class="btn btn-primary" id="buildSelectedLobby" style="width:100%">ПЕРЕЙТИ В ЛОББИ</button><button class="btn btn-secondary" id="closeSelected" style="width:100%;margin-top:8px">НАЗАД</button>
+  </div>`;
+  document.body.appendChild(wrap);
+  let seats=6,buyIn=1000,stack=100;
+  wrap.querySelectorAll('[data-seats]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-seats]').forEach(x=>x.classList.remove('active'));b.classList.add('active');seats=+b.dataset.seats});
+  wrap.querySelectorAll('[data-buyin]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-buyin]').forEach(x=>x.classList.remove('active'));b.classList.add('active');buyIn=+b.dataset.buyin});
+  wrap.querySelectorAll('[data-stack]').forEach(b=>b.onclick=()=>{wrap.querySelectorAll('[data-stack]').forEach(x=>x.classList.remove('active'));b.classList.add('active');stack=+b.dataset.stack});
+  $('#closeSelected').onclick=()=>wrap.remove();
+  $('#buildSelectedLobby').onclick=()=>{
+    if(buyIn>state.wallet)return toast('Не хватает внутренней валюты');
+    const maxFriends=Math.max(0,seats-1), friends=selectedPlayers.slice(0,maxFriends);
+    friends.forEach(friend=>state.invites.unshift(createInvite({from:state.nick,to:friend,seats,buyIn,format:'NL Hold’em'})));
+    saveState();wrap.remove();openLobby(createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:stack,realPlayers:[state.nick,...friends]}));
+  };
+}
+
 function renderInvites(){
   shell(`
     <div class="section-head" style="margin-top:4px"><h2>Инвайты</h2><span>${state.invites.length} всего</span></div>
@@ -214,6 +296,7 @@ function renderStats(){
 }
 
 function render(){
+  if(state.view==='players') return renderPlayers();
   if(state.view==='invites') return renderInvites();
   if(state.view==='history') return renderHistory();
   if(state.view==='stats') return renderStats();
