@@ -33,7 +33,7 @@ export class TableView{
           <div class="v1-title"><b>КАТАЛЫ</b><span id="v1Hand">HAND #1</span></div>
           <button id="v1Tournament" class="v1-tourney">
             <b id="v1Level">LVL 1 · 5:00</b>
-            <span id="v1Blinds">50 / 100 / 100 BBA</span>
+            <span id="v1Blinds">0.5 / 1 / 1 BBA · <i id="v1Players">6/6</i></span>
           </button>
         </header>
 
@@ -94,15 +94,17 @@ export class TableView{
   }
 
   updateSnapshot(s){
+    this.lastSnapshot=s;
     this.root.querySelector('#v1Hand').textContent=`HAND #${s.handNo}`;
     this.root.querySelector('#v1Level').textContent=`LVL ${s.level} · ${clock(s.levelRemaining)}`;
-    this.root.querySelector('#v1Blinds').textContent=`${money(s.sb)} / ${money(s.bb)} / ${money(s.ante)} BBA`;
-    this.root.querySelector('#v1Pot').textContent=money(s.pot);
-    this.root.querySelector('#v1PotBB').textContent=`${bb(s.potBB)} BB`;
+    this.root.querySelector('#v1Blinds').innerHTML=`${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · <i id="v1Players">${s.activePlayers}/${s.totalPlayers}</i>`;
+    const visiblePot=(s.settledPot!=null?s.settledPot:s.pot);
+    this.root.querySelector('#v1Pot').textContent=money(visiblePot);
+    this.root.querySelector('#v1PotBB').textContent=`${bb(visiblePot/s.bb)} BB`;
 
     s.players.forEach((p,i)=>{
       const seat=this.seats.get(i);if(!seat)return;
-      seat.stack.innerHTML=`${money(p.stack)} <b>${bb(p.stackBB)} BB</b>`;
+      seat.stack.innerHTML=`<b>${bb(p.stackBB)} BB</b><span>${money(p.stack)}</span>`;
       seat.pos.textContent=p.position?` ${p.position}`:'';
       seat.root.classList.toggle('folded',!!p.folded);
       seat.root.classList.toggle('out',!!p.out);
@@ -117,8 +119,8 @@ export class TableView{
 
     const hero=s.players.find(p=>p.nick===this.heroNick);
     if(hero){
-      this.root.querySelector('#v1HeroPos').textContent=`${hero.position||'—'} · ${bb(s.heroStackBB)} BB`;
-      this.root.querySelector('#v1HeroStack').textContent=money(hero.stack);
+      this.root.querySelector('#v1HeroPos').textContent=`${hero.position||'—'} · EFFECTIVE ${bb(s.heroStackBB)} BB`;
+      this.root.querySelector('#v1HeroStack').textContent=`${bb(s.heroStackBB)} BB`;
     }
   }
 
@@ -174,6 +176,11 @@ export class TableView{
     await new Promise(r=>setTimeout(r,280));
     ghosts.forEach(g=>g.remove());
     this.seats.forEach(seat=>{seat.bet.classList.remove('show');seat.bet.innerHTML=''});
+    if(this.lastSnapshot){
+      const settled=this.lastSnapshot.settledPot!=null?this.lastSnapshot.settledPot:this.lastSnapshot.pot;
+      this.root.querySelector('#v1Pot').textContent=money(settled);
+      this.root.querySelector('#v1PotBB').textContent=`${bb(settled/this.lastBB)} BB`;
+    }
   }
 
   postForcedBet(e){
@@ -211,8 +218,15 @@ export class TableView{
     };
     seat.action.textContent=labels[type]||type;
     if(['PLAYER_CALLED','PLAYER_RAISED','PLAYER_ALLIN'].includes(type))this.animateChipsFromSeat(e.seat,type);
-    if(e.bet)seat.action.textContent+=` ${bb(e.bet/((this.lastBB)||100))} BB`;
+    if(e.bet && ['PLAYER_RAISED','PLAYER_ALLIN'].includes(type))seat.action.textContent+=` ${bb(e.bet/((this.lastBB)||100))} BB`;
+    else if(e.amount && type==='PLAYER_CALLED')seat.action.textContent+=` ${bb(e.amount/((this.lastBB)||100))} BB`;
     seat.action.className='v1-action show '+type.toLowerCase().replace('player_','');
+    if(type==='PLAYER_FOLDED'){
+      Array.from(seat.cards.children).forEach((card,i)=>{
+        card.style.transform=`translate(${i?8:-8}px,-8px) rotate(${i?12:-12}deg) scale(.86)`;
+        card.style.opacity='.22';
+      });
+    }
     this.flashAction(seat,1200);
   }
 
@@ -258,8 +272,8 @@ export class TableView{
     let selected=Math.min(max,Math.max(min,legal.currentBet||min));
     const pre=street==='preflop';
     const presets=pre
-      ? `<button data-bb="2">2x</button><button data-bb="2.2">2.2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button>`
-      : `<button data-p="0.25">25%</button><button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.66">66%</button><button data-p="1">POT</button>`;
+      ? `<button data-bb="2.2">2.2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button>`
+      : `<button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.75">75%</button><button data-p="1">POT</button>`;
 
     c.innerHTML=`
       <div class="v1-context">

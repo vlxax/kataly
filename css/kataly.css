@@ -611,3 +611,29 @@ button{cursor:pointer}
 .v1-main-actions button:active,.v1-presets button:active{transform:scale(.97)}
 .v1-hero-cards{min-width:82px;min-height:52px}
 .v1-seat-cards{min-width:44px}
+
+/* ===== V1.1 REG PASS ===== */
+.v1-room .v1-shell{background:radial-gradient(circle at 50% 38%,rgba(34,87,68,.13),transparent 32%),#050608}
+.v1-room .v1-table-stage{top:calc(58px + env(safe-area-inset-top));bottom:198px}
+.v1-room .v1-felt{left:5%;right:5%;top:2%;bottom:2%;border-width:8px}
+.v1-room .v1-playerbox{background:linear-gradient(180deg,#171a20,#0d0f13);min-width:82px;padding:7px 6px 5px}
+.v1-room .v1-stack b{display:block;font-size:9px;color:#f6f1f4}
+.v1-room .v1-stack span{display:block;font-size:5.5px;color:#807a82;margin-top:1px}
+.v1-room .v1-name{font-size:7.5px}
+.v1-room .v1-name em{display:inline-block;background:#34131f;border-radius:4px;padding:2px 3px;color:#ff79a7}
+.v1-room .v1-avatar{width:32px;height:32px}
+.v1-room .v1-pot{top:55%;min-width:94px;padding:6px 9px}
+.v1-room .v1-pot b{font-size:15px}
+.v1-room .v1-deck{opacity:.7}
+.v1-room .v1-action{right:-16px;font-size:7px;min-width:38px}
+.v1-room .v1-bet{top:calc(100% + 4px);font-size:8px}
+.v1-room .v1-hero-strip{bottom:142px;height:48px}
+.v1-room .v1-controls{height:126px}
+.v1-room .v1-waiting{height:108px;font-size:9px}
+.v1-room .v1-context{font-size:7px}
+.v1-room .v1-main-actions button{height:48px;font-size:11px}
+.v1-room .v1-presets{grid-template-columns:repeat(5,1fr)}
+.v1-room .v1-turn-status.hero{box-shadow:0 0 18px rgba(255,46,125,.18)}
+.v1-info-pop{position:absolute;z-index:120;top:calc(60px + env(safe-area-inset-top));right:10px;width:190px;padding:12px;border-radius:14px;
+ background:rgba(16,18,23,.96);border:1px solid rgba(255,255,255,.08);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.v1-info-pop b{display:block;font-size:10px;margin-bottom:7px}.v1-info-pop span{display:block;font-size:7px;color:#aaa3ab;line-height:1.6}

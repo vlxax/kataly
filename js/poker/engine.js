@@ -241,12 +241,12 @@ export class HoldemDemo {
       this.postDead(this.players[bbIndex],this.ante,'BBA');
       await sleep(this.eventPaceMs);
     }
-    this.take(this.players[sbIndex],this.sb,'SB');
-    this.event('FORCED_BET',{seat:sbIndex,nick:this.players[sbIndex].nick,label:'SB',amount:this.sb,stack:this.players[sbIndex].stack,pot:this.pot});
+    const sbPaid=this.take(this.players[sbIndex],this.sb,'SB');
+    this.event('FORCED_BET',{seat:sbIndex,nick:this.players[sbIndex].nick,label:'SB',amount:sbPaid,bet:this.players[sbIndex].bet,stack:this.players[sbIndex].stack,pot:this.pot});
     this.emit();await sleep(this.eventPaceMs);
 
-    this.take(this.players[bbIndex],this.bb,'BB');
-    this.event('FORCED_BET',{seat:bbIndex,nick:this.players[bbIndex].nick,label:'BB',amount:this.bb,stack:this.players[bbIndex].stack,pot:this.pot});
+    const bbPaid=this.take(this.players[bbIndex],this.bb,'BB');
+    this.event('FORCED_BET',{seat:bbIndex,nick:this.players[bbIndex].nick,label:'BB',amount:bbPaid,bet:this.players[bbIndex].bet,stack:this.players[bbIndex].stack,pot:this.pot});
     this.currentBet=Math.max(this.players[sbIndex].bet,this.players[bbIndex].bet);
     this.emit();await sleep(this.eventPaceMs);
 

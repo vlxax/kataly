@@ -275,3 +275,16 @@ Critical fix: removed an extra closing brace at the end of `js/poker/tableView.j
 That brace made Safari reject the module with `Parser error` before the app could boot.
 All JS files were syntax-checked after the fix, and the full hand event test passes.
 Module URLs are cache-busted with `v=102` so Safari/GitHub Pages does not retain the broken module.
+
+## V1.1 — REG PASS
+Fast reg-focused pass:
+- Quick Session is now a one-click 6-max MTT test path.
+- 50 BB starting stack.
+- BB becomes the primary stack display; chips are secondary.
+- Central pot visually settles only after the betting-round collection step.
+- Calls/raises/folds are more explicit at the acting seat.
+- Folded cards visibly muck.
+- Hero timeout auto-checks or folds after 18 seconds.
+- Preflop sizing presets differ from postflop presets.
+- Tournament HUD has real info instead of an alert.
+- Decision history stores pot-before and decision time.

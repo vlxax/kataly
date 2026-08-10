@@ -44,7 +44,17 @@ export class TableController{
 
   bindStatic(){
     this.root.querySelector('#v1Exit').onclick=()=>this.exit();
-    this.root.querySelector('#v1Tournament').onclick=()=>alert('Tournament Info: уровень, блайнды и таймер уже отображаются сверху.');
+    this.root.querySelector('#v1Tournament').onclick=()=>{
+      const s=this.lastSnapshot;if(!s)return;
+      const old=this.root.querySelector('.v1-info-pop');if(old){old.remove();return;}
+      const pop=document.createElement('div');pop.className='v1-info-pop';
+      pop.innerHTML=`<b>КАТАЛЫ · 6-MAX MTT</b>
+        <span>Level ${s.level} · ${Math.floor(s.levelRemaining/60)}:${String(s.levelRemaining%60).padStart(2,'0')}</span>
+        <span>Blinds ${s.sb}/${s.bb} · BBA ${s.ante}</span>
+        <span>Players ${s.activePlayers}/${s.totalPlayers}</span>
+        <span>Average ${Math.round(s.averageStackBB*10)/10} BB</span>`;
+      this.root.appendChild(pop);setTimeout(()=>pop.remove(),3500);
+    };
   }
 
   startTurnTimer(e){
@@ -56,13 +66,18 @@ export class TableController{
     this.turnTimer=setInterval(()=>{
       left--;
       seat.ring.style.setProperty('--turn-progress',String(Math.max(0,left/18)));
-      if(left<=0)clearInterval(this.turnTimer);
+      if(left<=0){
+        clearInterval(this.turnTimer);
+        if(e.nick===this.heroNick && this.pendingResolve && this.pendingLegal){
+          this.submitHero({type:this.pendingLegal.canCheck?'check':'fold'});
+        }
+      }
     },1000);
   }
 
   onHeroDecision(legal,resolve){
     this.pendingLegal=legal;this.pendingResolve=resolve;
-    this.view.renderHeroControls(legal,action=>this.submitHero(action),this.lastSnapshot?.street||'preflop');
+    this.view.renderHeroControls(legal,action=>this.submitHero(action),(this.lastSnapshot&&this.lastSnapshot.street)||'preflop');
   }
 
   submitHero(action){
