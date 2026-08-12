@@ -1,6 +1,20 @@
 
 const suitSymbol={s:'♠',h:'♥',d:'♦',c:'♣'};
 
+const avatarMap={
+  GTO_Monkey:'assets/v1_1/bots/gto_monkey.jpeg',
+  NitKing:'assets/v1_1/bots/nitking.jpeg',
+  BluffDaddy:'assets/v1_1/bots/bluffdaddy.jpeg',
+  CallingStation:'assets/v1_1/bots/callingstation.jpeg',
+  MinRaiseBoss:'assets/v1_1/bots/minraiseboss.jpeg',
+  RiverPolice:'assets/v1_1/bots/riverpolice.jpeg'
+};
+function avatarFor(p,heroNick){
+  if(p.nick===heroNick)return 'assets/v1_1/bots/hero.png';
+  return avatarMap[p.nick]||'';
+}
+
+
 function cardNode(card,hidden=false){
   const el=document.createElement('div');
   el.className='v1-card';
@@ -11,7 +25,7 @@ function cardNode(card,hidden=false){
   }
   const red=card[1]==='h'||card[1]==='d';
   if(red)el.classList.add('red');
-  el.innerHTML=`<b>${card[0]}</b><span>${suitSymbol[card[1]]}</span>`;
+  el.innerHTML=`<b>${card[0]}</b><span>${suitSymbol[card[1]]}</span><i>${suitSymbol[card[1]]}</i>`;
   return el;
 }
 function money(n){return Math.round(Number(n)||0).toLocaleString('ru-RU')}
@@ -67,7 +81,7 @@ export class TableView{
       seat.style.left=pos[0]+'%';seat.style.top=pos[1]+'%';
       seat.innerHTML=`
         <div class="v1-seat-cards"></div>
-        <div class="v1-avatar">${p.nick.slice(0,2).toUpperCase()}</div>
+        <div class="v1-avatar${p.nick===this.heroNick?' hero-avatar':''}"${avatarFor(p,this.heroNick)?` style="background-image:url('${avatarFor(p,this.heroNick)}')"`:''}><span>${p.nick.slice(0,2).toUpperCase()}</span></div>
         <div class="v1-playerbox">
           <div class="v1-name">${p.nick}${p.nick===this.heroNick?' · YOU':''}<em></em></div>
           <div class="v1-stack">—</div>
