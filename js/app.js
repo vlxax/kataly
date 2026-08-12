@@ -1,10 +1,10 @@
-import { analyzeSession } from './analytics/sessionAnalysis.js?v=240';
-import { mountPokerTable } from './tableUI.js?v=240';
+import { analyzeSession } from './analytics/sessionAnalysis.js';
+import { mountPokerTable } from './tableUI.js';
 
-import { state, saveState } from './state.js?v=240';
-import { makeBots } from './bots/botEngine.js?v=240';
-import { createInvite, mockIncomingInvite } from './multiplayer/invites.js?v=240';
-import { createLobby } from './multiplayer/lobby.js?v=240';
+import { state, saveState } from './state.js';
+import { makeBots } from './bots/botEngine.js';
+import { createInvite, mockIncomingInvite } from './multiplayer/invites.js';
+import { createLobby } from './multiplayer/lobby.js';
 
 const $ = (q) => document.querySelector(q);
 const app = document.getElementById('app');
@@ -52,10 +52,10 @@ function renderHome(){
     <section class="hero hero-clean">
       <div class="eyebrow">КАТАЛЫ · NL HOLD'EM</div>
       <h1>Сел.<br>Играешь.</h1>
-      <p>6-max MTT · 50 BB · BB Ante. Пять ботов садятся автоматически. Сейчас тестируем сам покерный стол.</p>
+      <p>Выбирай 6-max или 9-max. Хочешь — зови друзей. Все свободные места автоматически займут боты.</p>
       <div class="actions actions-single">
-        <button class="btn btn-primary" id="playNow">СЕССИЯ · 6-MAX · 50 BB</button>
-        <button class="btn btn-secondary" id="inviteFriends">СОБРАТЬ СТОЛ С ДРУЗЬЯМИ</button>
+        <button class="btn btn-primary" id="playNow">ИГРАТЬ</button>
+        <button class="btn btn-secondary" id="inviteFriends">ПРИГЛАСИТЬ ДРУЗЕЙ</button>
       </div>
     </section>
 
@@ -75,16 +75,13 @@ function renderHome(){
         <button class="btn btn-secondary mini" data-accept="${i.id}">СЕСТЬ</button>
       </div>`).join('') : `<div class="card empty">Тебя пока никуда не зовут. Трагедия отменяется — стол всё равно соберут боты.</div>`}
   `);
-  $('#playNow').onclick=()=>{
-    const lobby=createLobby({host:state.nick,seats:6,format:'NL Hold’em MTT',buyIn:1000,stackBB:50,realPlayers:[state.nick]});
-    openLobby(lobby);
-  };
+  $('#playNow').onclick=()=>openGameSetup();
   $('#inviteFriends').onclick=()=>openGameSetup(true);
   document.querySelectorAll('[data-accept]').forEach(b=>b.onclick=()=>{
     const inv=state.invites.find(x=>x.id===b.dataset.accept);
     if(!inv) return;
     inv.status='accepted'; saveState();
-    openLobby(createLobby({host:inv.from,seats:inv.seats,format:inv.format,buyIn:inv.buyIn,stackBB:50,realPlayers:[state.nick,inv.from]}));
+    openLobby(createLobby({host:inv.from,seats:inv.seats,format:inv.format,buyIn:inv.buyIn,stackBB:100,realPlayers:[state.nick,inv.from]}));
   });
 }
 
@@ -114,7 +111,7 @@ function openGameSetup(focusInvite=false){
     </div>
 
     <div class="game-meta">
-      <div><span>Стек</span><b>50 BB</b></div>
+      <div><span>Стек</span><b>100 BB</b></div>
       <div><span>Блайнды</span><b>50 / 100</b></div>
       <div><span>Темп</span><b>Обычный</b></div>
     </div>
@@ -164,7 +161,7 @@ function openGameSetup(focusInvite=false){
   wrap.querySelector('#closeSheet').onclick=()=>wrap.remove();
   wrap.querySelector('#goLobby').onclick=()=>{
     
-    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:50,realPlayers:[state.nick,...friends]});
+    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});
     wrap.remove(); openLobby(lobby);
   };
   if(focusInvite) setTimeout(()=>wrap.querySelector('#friendNick').focus(),100);

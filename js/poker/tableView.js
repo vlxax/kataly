@@ -33,7 +33,7 @@ export class TableView{
           <div class="v1-title"><b>КАТАЛЫ</b><span id="v1Hand">HAND #1</span></div>
           <button id="v1Tournament" class="v1-tourney">
             <b id="v1Level">LVL 1 · 5:00</b>
-            <span id="v1Blinds">0.5 / 1 / 1 BBA · <i id="v1Players">6/6</i></span>
+            <span id="v1Blinds">50 / 100 / 100 BBA</span>
           </button>
         </header>
 
@@ -42,7 +42,7 @@ export class TableView{
             <div id="v1Deck" class="v1-deck">◆</div>
             <div id="v1ChipLayer" class="v1-chip-layer"></div>
             <div id="v1Board" class="v1-board"></div>
-            <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div><div id="v1SessionInfo" class="v1-session-info">6-MAX MTT<br><span>Blinds 0.5 / 1 / 1 BBA</span></div>
+            <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div>
           </div>
           <div id="v1Seats" class="v1-seats"></div>
           <div id="v1Banner" class="v1-banner"></div>
@@ -50,27 +50,26 @@ export class TableView{
 
         <div class="v1-hero-strip">
           <div id="v1HeroCards" class="v1-hero-cards"></div>
-          <div class="v1-hero-meta">
-            <strong>${this.heroNick} · YOU</strong>
-            <span id="v1HeroPos" class="v1-hero-position">POSITION —</span>
-            <b id="v1HeroStack">—</b>
-          </div>
+          <div class="v1-hero-meta"><span id="v1HeroPos">—</span><b id="v1HeroStack">—</b></div>
+          <div id="v1TurnStatus" class="v1-turn-status">РАЗДАЧА</div>
         </div>
 
-        <div id="v1Controls" class="v1-controls v1-controls-hidden"></div>
+        <div id="v1Controls" class="v1-controls">
+          <div class="v1-waiting">Ждём раздачу</div>
+        </div>
       </div>`;
 
     const seatWrap=this.root.querySelector('#v1Seats');
     this.players.forEach((p,i)=>{
       const pos=this.seatPos(i,this.players.length);
       const seat=document.createElement('div');
-      seat.className='v1-seat'+(p.nick===this.heroNick?' hero-seat':'');
+      seat.className='v1-seat';
       seat.style.left=pos[0]+'%';seat.style.top=pos[1]+'%';
       seat.innerHTML=`
         <div class="v1-seat-cards"></div>
         <div class="v1-avatar">${p.nick.slice(0,2).toUpperCase()}</div>
-        <div class="v1-playerbox"><i class="v1-dealer-button">D</i>
-          <div class="v1-name">${p.nick}${p.nick===this.heroNick?' · YOU':''}<em></em></div><div class="v1-pos-badge"></div>
+        <div class="v1-playerbox">
+          <div class="v1-name">${p.nick}${p.nick===this.heroNick?' · YOU':''}<em></em></div>
           <div class="v1-stack">—</div>
         </div>
         <div class="v1-bet"></div>
@@ -82,42 +81,29 @@ export class TableView{
         root:seat,cards:seat.querySelector('.v1-seat-cards'),
         stack:seat.querySelector('.v1-stack'),pos:seat.querySelector('.v1-name em'),
         bet:seat.querySelector('.v1-bet'),action:seat.querySelector('.v1-action'),
-        dealer:seat.querySelector('.v1-dealer'),ring:seat.querySelector('.v1-ring'),posBadge:seat.querySelector('.v1-pos-badge')
+        dealer:seat.querySelector('.v1-dealer'),ring:seat.querySelector('.v1-ring')
       });
     });
   }
 
   seatPos(i,n){
-    const heroIndex=Math.max(0,this.players.findIndex(p=>p.nick===this.heroNick));
-    const rel=(i-heroIndex+n)%n;
-    const maps={6:[[11,83],[13,63],[12,26],[50,10],[88,27],[88,61]]};
-    return (maps[n]||maps[6])[rel]||[50,50];
+    const maps={
+      6:[[50,83],[15,69],[15,24],[50,10],[85,24],[85,69]]
+    };
+    return (maps[n]||maps[6])[i]||[50,50];
   }
 
   updateSnapshot(s){
-    this.lastSnapshot=s;
-    this.seats.forEach((seat,idx)=>{
-      // Seat objects expose `root` and a cached `dealer` node; there is no `el`.
-      // Keep dealer rendering on the same DOM contract used everywhere else.
-      if(seat.dealer)seat.dealer.style.display=idx===s.button?'grid':'none';
-    });
-    this.root.querySelector('#v1Hand')?.replaceChildren(document.createTextNode(`HAND #${s.handNo}`));
+    this.root.querySelector('#v1Hand').textContent=`HAND #${s.handNo}`;
     this.root.querySelector('#v1Level').textContent=`LVL ${s.level} · ${clock(s.levelRemaining)}`;
-    this.root.querySelector('#v1Blinds').innerHTML=`${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · <i id="v1Players">${s.activePlayers}/${s.totalPlayers}</i>`;
-    const sessionInfo=this.root.querySelector('#v1SessionInfo');
-    if(sessionInfo)sessionInfo.innerHTML=`6-MAX MTT · HAND ${s.handNo}<br><span>Blinds ${bb(s.sb/s.bb)} / 1 / ${bb(s.ante/s.bb)} BBA · ${s.activePlayers}/${s.totalPlayers}</span>`;
-    const visiblePot=(s.settledPot!=null?s.settledPot:s.pot);
-    this.root.querySelector('#v1Pot').textContent=money(visiblePot);
-    this.root.querySelector('#v1PotBB').textContent=`${bb(visiblePot/s.bb)} BB`;
+    this.root.querySelector('#v1Blinds').textContent=`${money(s.sb)} / ${money(s.bb)} / ${money(s.ante)} BBA`;
+    this.root.querySelector('#v1Pot').textContent=money(s.pot);
+    this.root.querySelector('#v1PotBB').textContent=`${bb(s.potBB)} BB`;
 
     s.players.forEach((p,i)=>{
       const seat=this.seats.get(i);if(!seat)return;
-      const st=s.botStats&&s.botStats[p.nick];
-      const hud=st&&p.nick!==this.heroNick&&st.hands>0
-        ? `<small>${Math.round(st.vpip/Math.max(1,st.hands)*100)}/${Math.round(st.pfr/Math.max(1,st.hands)*100)}/${Math.round(st.threeBet/Math.max(1,st.hands)*100)}</small>`
-        : '';
-      seat.stack.innerHTML=`<b>${money(p.stack)}</b><span>${bb(p.stackBB)} BB</span>${hud}`;
-      seat.pos.textContent='';if(seat.posBadge)seat.posBadge.textContent=p.position||'';
+      seat.stack.innerHTML=`${money(p.stack)} <b>${bb(p.stackBB)} BB</b>`;
+      seat.pos.textContent=p.position?` ${p.position}`:'';
       seat.root.classList.toggle('folded',!!p.folded);
       seat.root.classList.toggle('out',!!p.out);
       seat.dealer.style.display=p.seat===s.button?'grid':'none';
@@ -131,13 +117,12 @@ export class TableView{
 
     const hero=s.players.find(p=>p.nick===this.heroNick);
     if(hero){
-      this.root.querySelector('#v1HeroPos').textContent=`POSITION ${hero.position||'—'} · ${bb(s.heroStackBB)} BB`;
+      this.root.querySelector('#v1HeroPos').textContent=`${hero.position||'—'} · ${bb(s.heroStackBB)} BB`;
       this.root.querySelector('#v1HeroStack').textContent=money(hero.stack);
     }
   }
 
   clearHand(){
-    this.leaveHeroSpectator();
     this.board=[];
     this.root.querySelector('#v1Board').innerHTML='';
     this.root.querySelector('#v1HeroCards').innerHTML='';
@@ -171,7 +156,7 @@ export class TableView{
     chip.style.left=(r.left-sr.left+r.width/2)+'px';chip.style.top=(r.top-sr.top+r.height/2)+'px';
     layer.appendChild(chip);
     requestAnimationFrame(()=>{chip.style.transform='translate(-50%,-50%) scale(.8)';chip.style.opacity='.25'});
-    setTimeout(()=>chip.remove(),520);
+    setTimeout(()=>chip.remove(),260);
   }
 
   async collectBets(){
@@ -186,14 +171,9 @@ export class TableView{
       stage.appendChild(g);ghosts.push(g);
       requestAnimationFrame(()=>g.style.transform=`translate(${pr.left-r.left}px,${pr.top-r.top}px) scale(.65)`);
     });
-    await new Promise(r=>setTimeout(r,720));
+    await new Promise(r=>setTimeout(r,280));
     ghosts.forEach(g=>g.remove());
     this.seats.forEach(seat=>{seat.bet.classList.remove('show');seat.bet.innerHTML=''});
-    if(this.lastSnapshot){
-      const settled=this.lastSnapshot.settledPot!=null?this.lastSnapshot.settledPot:this.lastSnapshot.pot;
-      this.root.querySelector('#v1Pot').textContent=money(settled);
-      this.root.querySelector('#v1PotBB').textContent=`${bb(settled/this.lastBB)} BB`;
-    }
   }
 
   postForcedBet(e){
@@ -218,6 +198,9 @@ export class TableView{
   setTurn(e){
     this.seats.forEach(s=>s.ring.classList.remove('show'));
     const seat=this.seats.get(e.seat);if(seat)seat.ring.classList.add('show');
+    this.root.querySelector('#v1TurnStatus').textContent=
+      e.nick===this.heroNick?'ТВОЙ ХОД':`${e.nick} думает…`;
+    this.root.querySelector('#v1TurnStatus').classList.toggle('hero',e.nick===this.heroNick);
   }
 
   showPlayerAction(type,e){
@@ -228,16 +211,9 @@ export class TableView{
     };
     seat.action.textContent=labels[type]||type;
     if(['PLAYER_CALLED','PLAYER_RAISED','PLAYER_ALLIN'].includes(type))this.animateChipsFromSeat(e.seat,type);
-    if(e.bet && ['PLAYER_RAISED','PLAYER_ALLIN'].includes(type))seat.action.textContent+=` ${bb(e.bet/((this.lastBB)||100))} BB`;
-    else if(e.amount && type==='PLAYER_CALLED')seat.action.textContent+=` ${bb(e.amount/((this.lastBB)||100))} BB`;
+    if(e.bet)seat.action.textContent+=` ${bb(e.bet/((this.lastBB)||100))} BB`;
     seat.action.className='v1-action show '+type.toLowerCase().replace('player_','');
-    if(type==='PLAYER_FOLDED'){
-      Array.from(seat.cards.children).forEach((card,i)=>{
-        card.style.transform=`translate(${i?8:-8}px,-8px) rotate(${i?12:-12}deg) scale(.86)`;
-        card.style.opacity='.22';
-      });
-    }
-    this.flashAction(seat,2200);
+    this.flashAction(seat,1200);
   }
 
   flashAction(seat,ms){
@@ -260,53 +236,30 @@ export class TableView{
 
   showPotAward(e){
     const banner=this.root.querySelector('#v1Banner');
-    const pot=e.potLabel||'POT';
-    const amount=e.bb?`${bb(e.amount/e.bb)} BB`:money(e.amount);
-    banner.innerHTML=`<b>${pot} · ${e.winners.join(', ')}</b><span>${e.label||''} · ${amount}</span>`;
+    banner.innerHTML=`<b>${e.winners.join(', ')}</b><span>+${money(e.amount)}</span>`;
     banner.classList.add('show','win');
-    setTimeout(()=>banner.classList.remove('show'),3200);
+    setTimeout(()=>banner.classList.remove('show'),1200);
   }
 
   showHandResult(summary){
     const banner=this.root.querySelector('#v1Banner');
     banner.innerHTML=`<b>${summary.winners.includes(this.heroNick)?'БАНК ТВОЙ':'РУКА ЗАВЕРШЕНА'}</b><span>${summary.winners.join(', ')}</span>`;
     banner.classList.add('show');
-    setTimeout(()=>banner.classList.remove('show'),2800);
+    setTimeout(()=>banner.classList.remove('show'),1000);
   }
 
-  showWaiting(){
-    const c=this.root.querySelector('#v1Controls');
-    c.innerHTML='';
-    c.classList.add('v1-controls-hidden');
-  }
-
-  enterHeroSpectator(){
-    const strip=this.root.querySelector('.v1-hero-strip');
-    const cards=this.root.querySelector('#v1HeroCards');
-    if(strip)strip.classList.add('spectating');
-    if(cards)cards.classList.add('folded-cards');
-    this.showWaiting();
-  }
-
-  leaveHeroSpectator(){
-    const strip=this.root.querySelector('.v1-hero-strip');
-    const cards=this.root.querySelector('#v1HeroCards');
-    if(strip)strip.classList.remove('spectating');
-    if(cards)cards.classList.remove('folded-cards');
+  showWaiting(text='Ждём действия'){
+    this.root.querySelector('#v1Controls').innerHTML=`<div class="v1-waiting">${text}</div>`;
   }
 
   renderHeroControls(legal,onAction,street='preflop'){
     const c=this.root.querySelector('#v1Controls');
-    c.classList.remove('v1-controls-hidden');
     const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise;
     let selected=Math.min(max,Math.max(min,legal.currentBet||min));
     const pre=street==='preflop';
-    const facingOpen=pre&&legal.currentBet>legal.bb;
     const presets=pre
-      ? (facingOpen
-          ? `<button data-mult="3">3x OPEN</button><button data-mult="3.5">3.5x</button><button data-mult="4">4x</button>`
-          : `<button data-bb="2.2">2.2 BB</button><button data-bb="2.5">2.5 BB</button><button data-bb="3">3 BB</button>`)
-      : `<button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.75">75%</button><button data-p="1">POT</button>`;
+      ? `<button data-bb="2">2x</button><button data-bb="2.2">2.2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button>`
+      : `<button data-p="0.25">25%</button><button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.66">66%</button><button data-p="1">POT</button>`;
 
     c.innerHTML=`
       <div class="v1-context">
@@ -338,27 +291,8 @@ export class TableView{
       selected=Math.max(min,Math.min(max,Math.round(legal.bb*Number(b.dataset.bb))));
       range.value=selected;sync();
     });
-    c.querySelectorAll('[data-mult]').forEach(b=>b.onclick=()=>{
-      selected=Math.max(min,Math.min(max,Math.round(legal.currentBet*Number(b.dataset.mult))));
-      range.value=selected;sync();
-    });
     c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});
     confirm.onclick=()=>onAction({type:'raise',amount:selected});
   }
-  toggleHistory(snapshot){
-    let drawer=this.root.querySelector('.v1-history-drawer');
-    if(drawer){drawer.remove();return;}
-    drawer=document.createElement('div');
-    drawer.className='v1-history-drawer';
-    const rows=(snapshot&&snapshot.handHistory?snapshot.handHistory:[]).slice(-24).map(x=>{
-      const label=(x.type||'').replaceAll('_',' ');
-      const amount=x.amountBB!=null?` · ${bb(x.amountBB)} BB`:'';
-      return `<div><b>${label}</b><span>${x.nick||''}${amount}</span></div>`;
-    }).join('');
-    drawer.innerHTML=`<header><b>HAND #${snapshot?snapshot.handNo:'—'}</b><button>×</button></header>
-      <section>${rows||'<p>История появится после первого действия.</p>'}</section>`;
-    drawer.querySelector('button').onclick=()=>drawer.remove();
-    this.root.appendChild(drawer);
-  }
-
+}
 }

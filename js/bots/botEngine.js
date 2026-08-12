@@ -1,5 +1,5 @@
 
-import { BOT_ARCHETYPES } from './personalities.js?v=102';
+import { BOT_ARCHETYPES } from './personalities.js';
 export { BOT_ARCHETYPES };
 export function makeBots(count){
   const list=[];
