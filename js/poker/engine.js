@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js?v=114';
-import { PokerEventBus } from './eventBus.js?v=114';
+import { createDeck, shuffle } from './deck.js?v=130';
+import { PokerEventBus } from './eventBus.js?v=130';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -163,13 +163,17 @@ export class HoldemDemo {
     const active=this.active();
     const avg=active.reduce((s,p)=>s+p.stack,0)/Math.max(1,active.length);
     const hero=this.hero();
+    const stackOrder=active.slice().sort((a,b)=>b.stack-a.stack);
+    const heroRank=hero&&!hero.out?stackOrder.findIndex(p=>p.nick===hero.nick)+1:null;
+    const next=this.nextLevel()||{sb:this.sb,bb:this.bb,ante:this.ante};
     return{
       players:this.players.map(p=>({...p,hole:p.nick===this.heroNick?p.hole:['XX','XX'],stackBB:p.stack/this.bb,betBB:p.bet/this.bb})),
       heroHole:hero?hero.hole.slice():[],board:this.board.slice(),pot:this.pot,streetPot:this.streetPot,potBB:this.pot/this.bb,
-      street:this.street,phase:this.phase,handNo:this.handNo,currentBet:this.currentBet,button:this.button,
+      street:this.street,phase:this.phase,handNo:this.handNo,currentBet:this.currentBet,currentBetBB:this.currentBet/this.bb,button:this.button,
       log:this.log.slice(-12),sb:this.sb,bb:this.bb,ante:this.ante,level:this.level+1,
-      levelRemaining:this.levelRemaining(),nextLevel:this.nextLevel(),activePlayers:active.length,
-      totalPlayers:this.players.length,averageStackBB:avg/this.bb,heroStackBB:(hero?hero.stack:0)/this.bb,
+      levelRemaining:this.levelRemaining(),nextLevel:next,nextSB:next.sb,nextBB:next.bb,nextAnte:next.ante,
+      activePlayers:active.length,totalPlayers:this.players.length,averageStackBB:avg/this.bb,
+      heroStackBB:(hero?hero.stack:0)/this.bb,heroRank:heroRank,
       currentActorSeat:this.currentActorSeat,currentActorNick:this.currentActorNick,
       eliminations:this.eliminations.slice(),finished:this.finished
     };
@@ -389,7 +393,9 @@ export class HoldemDemo {
 
     this.handActions.push({
       handNo:this.handNo,street:this.street,player:player.nick,position:player.position,action:type,
-      amountBB:amount/this.bb,toCallBB:legal.toCallBB,potBeforeBB:(meta.potBefore||0)/this.bb,potAfterBB:this.pot/this.bb,
+      amountBB:amount/this.bb,toCallBB:legal.toCallBB,currentBetBB:legal.currentBet/this.bb,
+      potBeforeBB:(meta.potBefore||0)/this.bb,potAfterBB:this.pot/this.bb,
+      potOdds:legal.toCall>0?legal.toCall/Math.max(1,(meta.potBefore||0)+legal.toCall):0,
       decisionMs:meta.decisionMs||0,playersInHand:this.liveInHand().length,
       effectiveStackBB:Math.min(...this.liveInHand().map(x=>x.stack+Math.max(0,this.currentBet-x.bet)))/this.bb,
       stackAfterBB:player.stack/this.bb,heroHole:this.hero()?this.hero().hole.slice():[],
@@ -398,29 +404,90 @@ export class HoldemDemo {
     return{fullRaise};
   }
 
-  async botAction(player,legal){
-    await sleep(this.botDelayMs+Math.random()*this.botDelayMs*.55);
-    let power=this.preflopStrength(player.hole);
-    if(this.street!=='preflop' && this.board.length>=3){
-      const rank=evaluate7(player.hole.concat(this.board));
-      const made=(rank[0]||0)/8;
-      const overcards=player.hole.filter(c=>RANK[c[0]]>Math.max(...this.board.map(x=>RANK[x[0]]))).length*.04;
-      const suited=player.hole[0]&&player.hole[1]&&player.hole[0][1]===player.hole[1][1]?0.03:0;
-      power=Math.min(1,.12+made*.78+overcards+suited);
-    }
-    const pressure=legal.toCall/Math.max(1,legal.pot+legal.toCall);
-    if(legal.toCall>0&&power<.28&&pressure>.18)return{type:'fold'};
-    if(legal.canRaise&&power>.68&&Math.random()<.42){
-      const sizing=this.street==='preflop'?Math.max(this.bb*2.2,this.currentBet+this.bb*1.2):Math.max(this.bb,legal.pot*.5);
-      const target=Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(this.currentBet+sizing)));
-      return{type:'raise',amount:target};
-    }
-    if(legal.toCall===0&&legal.canRaise&&power>.50&&Math.random()<.30){
-      const sizing=this.street==='preflop'?this.bb*2.2:Math.max(this.bb,legal.pot*.33);
-      return{type:'raise',amount:Math.min(legal.maxRaise,Math.max(legal.minRaise,Math.round(sizing)))};
-    }
-    return{type:legal.canCheck?'check':'call'};
+  positionFactor(position){
+    const map={UTG:-.09,HJ:-.04,CO:.04,BTN:.09,'BTN/SB':.08,SB:-.01,BB:.02};
+    return map[position]||0;
   }
+
+  styleProfile(player){
+    const key=(player.nick+' '+(player.style||'')).toLowerCase();
+    if(key.indexOf('nit')>=0)return{loose:-.13,agg:-.12,bluff:.03,call:-.10};
+    if(key.indexOf('bluff')>=0||key.indexOf('агро')>=0)return{loose:.08,agg:.18,bluff:.18,call:-.02};
+    if(key.indexOf('calling')>=0||key.indexOf('липк')>=0||key.indexOf('pohu')>=0)return{loose:.15,agg:-.10,bluff:.02,call:.18};
+    if(key.indexOf('minraise')>=0||key.indexOf('хаот')>=0)return{loose:.12,agg:.06,bluff:.10,call:.07};
+    if(key.indexOf('river')>=0||key.indexOf('дисцип')>=0)return{loose:-.04,agg:.02,bluff:.05,call:-.03};
+    if(key.indexOf('bubble')>=0||key.indexOf('icm')>=0)return{loose:.03,agg:.13,bluff:.12,call:-.05};
+    return{loose:0,agg:.05,bluff:.07,call:0};
+  }
+
+  postflopInfo(player){
+    const cards=player.hole.concat(this.board),rank=evaluate7(cards),category=rank[0]||0;
+    const holeRanks=player.hole.map(c=>RANK[c[0]]),boardRanks=this.board.map(c=>RANK[c[0]]);
+    const suits={};cards.forEach(c=>suits[c[1]]=(suits[c[1]]||0)+1);
+    const flushDraw=Object.keys(suits).some(k=>suits[k]===4);
+    const uniq=Array.from(new Set(cards.map(c=>RANK[c[0]]))).sort((a,b)=>a-b);
+    if(uniq.indexOf(14)>=0)uniq.unshift(1);
+    let oesd=false,gutshot=false;
+    for(let lo=1;lo<=10;lo++){
+      let have=0;for(let x=lo;x<lo+5;x++)if(uniq.indexOf(x)>=0)have++;
+      if(have===4){
+        const missing=[];for(let x=lo;x<lo+5;x++)if(uniq.indexOf(x)<0)missing.push(x);
+        if(missing.length===1&&(missing[0]===lo||missing[0]===lo+4))oesd=true;else gutshot=true;
+      }
+    }
+    const overcards=holeRanks.filter(v=>boardRanks.length&&v>Math.max.apply(null,boardRanks)).length;
+    let strength=.08+category*.115;
+    if(category===1)strength+=.08;if(category>=2)strength+=.12;
+    if(flushDraw)strength+=.12;if(oesd)strength+=.10;else if(gutshot)strength+=.05;
+    strength+=overcards*.025;
+    return{rank:rank,category:category,flushDraw:flushDraw,oesd:oesd,gutshot:gutshot,strength:Math.max(.03,Math.min(.98,strength))};
+  }
+
+  chooseRaiseTarget(legal,fraction){
+    const base=this.currentBet+legal.toCall;
+    const add=Math.max(this.bb,Math.round((legal.pot+legal.toCall)*fraction));
+    return Math.max(legal.minRaise,Math.min(legal.maxRaise,base+add));
+  }
+
+  async botAction(player,legal){
+    await sleep(this.botDelayMs+Math.random()*this.botDelayMs*.45);
+    const profile=this.styleProfile(player),pos=this.positionFactor(player.position);
+    const pressure=legal.toCall/Math.max(1,legal.pot+legal.toCall);
+    let strength,draw=false;
+    if(this.street==='preflop')strength=this.preflopStrength(player.hole)+pos+profile.loose;
+    else{
+      const info=this.postflopInfo(player);strength=info.strength;draw=info.flushDraw||info.oesd||info.gutshot;
+    }
+    strength=Math.max(0,Math.min(1,strength));
+    const monster=strength>.78,good=strength>.58,medium=strength>.40;
+    const bluffChance=Math.max(0,profile.bluff+(player.position==='BTN'||player.position==='CO'? .08:0));
+
+    // Facing a bet: use pot odds, hand strength and archetype instead of auto-calling.
+    if(legal.toCall>0){
+      const callThreshold=Math.max(.16,pressure-profile.call);
+      if(!medium&&!draw&&strength<callThreshold&&Math.random()>bluffChance)return{type:'fold'};
+      if(legal.canRaise&&(monster||(good&&Math.random()<.20+profile.agg*.35))){
+        if(legal.stackBB<14||monster&&legal.stackBB<24)return{type:'allin'};
+        return{type:'raise',amount:this.chooseRaiseTarget(legal,this.street==='preflop'?.65:(strength>.75?.75:.55))};
+      }
+      if(strength+profile.call>=pressure*.90||draw)return{type:'call'};
+      return Math.random()<.18+profile.call?{type:'call'}:{type:'fold'};
+    }
+
+    // Checked to: value bet strong hands, stab some weak ranges, check medium showdown value.
+    if(legal.canRaise){
+      let betFreq=.08+Math.max(0,profile.agg)*.45+Math.max(0,pos)*.6;
+      if(monster)betFreq=.88;else if(good)betFreq=.62;else if(draw)betFreq=.48;
+      else if(strength<.28)betFreq+=bluffChance;
+      if(Math.random()<Math.min(.92,betFreq)){
+        if(monster&&legal.stackBB<18)return{type:'allin'};
+        const frac=monster?.72:(draw?.52:(strength<.30?.34:.45));
+        return{type:'raise',amount:this.chooseRaiseTarget(legal,frac)};
+      }
+    }
+    return{type:'check'};
+  }
+
   preflopStrength(hole){
     if(!hole||hole.length<2)return.5;
     const a=RANK[hole[0][0]],b=RANK[hole[1][0]],pair=a===b,suited=hole[0][1]===hole[1][1],gap=Math.abs(a-b);

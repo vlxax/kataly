@@ -282,3 +282,30 @@ PokerEngine → PokerEventBus → TableController → TableView
 
 ## V1.1.3
 Исправлен parser error в js/poker/tableView.js: удалена лишняя закрывающая фигурная скобка в конце файла.
+
+
+## V1.2 POKER CORE REBUILD
+
+This build prioritizes gameplay over visuals.
+
+- Poker engine remains authoritative for deck, blinds, BBA, streets, legal actions, showdown and side pots.
+- Bot decisions now depend on position, pot odds, made hand/draw strength and distinct player archetypes.
+- Nits, aggro regs, calling stations, chaotic amateurs, disciplined regs and ICM aggressors no longer share one generic decision tree.
+- Bet/raise sizing is contextual rather than one fixed random size.
+- Short stacks can jam; strong hands value bet; draws semi-bluff; weak ranges can fold to pressure.
+- Hero decision watchdog: a hand cannot remain frozen forever. After 30 seconds the engine takes the safe timeout action (check if free, otherwise fold).
+- Hand transition is deliberately slower (2.6 s) so the result is readable.
+- Turbo levels are 120 seconds for the Quick Game loop.
+- Existing Safari parser compatibility is preserved.
+
+## V1.3 Poker Core UX
+- live tournament HUD: players left, average stack, current place, next blinds
+- compact action history by street
+- real hero decision clock: 15s + 30s session time bank
+- manual TIME BANK +10s and automatic safe timeout action
+- sit-out / return toggle with auto check-fold
+- per-hand Poker Brain mini-review
+- completed tournament now returns a real session payload to History/Stats/Poker Brain
+- TOP-3 payout model for 6-max demo tournaments
+- richer action records: pot odds, current bet, timing, effective stack
+- faster bot/action pacing while keeping full deal flow

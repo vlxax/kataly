@@ -833,3 +833,35 @@ button{cursor:pointer}
   .v1-controls{height:122px}
   .v1-main-actions button{height:46px}
 }
+
+/* V1.3 poker-core UX: live HUD, hand history, timebank, tournament info */
+.v1-top{gap:6px}
+.v1-mini-icon{width:28px;height:28px;border:1px solid #282c33;background:#111419;color:#aaa4ac;border-radius:9px;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0}
+.v1-mini-icon.active{color:#ff8fbd;border-color:#8f2855;background:#33131f;box-shadow:0 0 12px rgba(255,46,125,.12)}
+.v1-tourney{margin-left:auto}
+.v1-live-hud{position:absolute;top:7px;left:50%;transform:translateX(-50%);z-index:18;display:flex;gap:4px;padding:4px;background:rgba(6,8,10,.72);border:1px solid rgba(255,255,255,.07);border-radius:10px;backdrop-filter:blur(8px)}
+.v1-live-hud>div{min-width:46px;text-align:center;padding:3px 5px;border-right:1px solid rgba(255,255,255,.06)}
+.v1-live-hud>div:last-child{border-right:0}
+.v1-live-hud span{display:block;font-size:5px;letter-spacing:.11em;color:#77717a;font-weight:900}
+.v1-live-hud b{display:block;font-size:7px;color:#eee9ed;margin-top:2px}
+.v1-history-drawer,.v1-tournament-panel{position:absolute;z-index:80;left:10px;right:10px;top:10px;max-height:72%;overflow:hidden;background:rgba(8,10,13,.97);border:1px solid #2d3138;border-radius:16px;box-shadow:0 24px 60px #000c;transform:translateY(-115%);opacity:0;pointer-events:none;transition:.18s ease}
+.v1-history-drawer.open,.v1-tournament-panel.open{transform:translateY(0);opacity:1;pointer-events:auto}
+.v1-drawer-head{height:38px;padding:0 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #20242a}
+.v1-drawer-head b{font-size:8px;letter-spacing:.08em}
+.v1-drawer-head button{width:26px;height:26px;border:0;border-radius:8px;background:#181b20;color:#aaa;font-size:15px}
+.v1-action-log{max-height:330px;overflow:auto;padding:8px}
+.v1-log-street{font-size:6px;letter-spacing:.12em;color:#ff5594;font-weight:1000;padding:8px 4px 4px;border-bottom:1px solid #1d2025}
+.v1-log-row{display:grid;grid-template-columns:42px 1fr auto;gap:6px;align-items:center;padding:6px 4px;border-bottom:1px solid #171a1e}
+.v1-log-row span{font-size:5px;color:#716c73}.v1-log-row b{font-size:7px;color:#d9d4d8}.v1-log-row em{font-style:normal;font-size:7px;color:#aaa3aa}.v1-log-row.win em{color:#7ed6aa}
+.v1-tournament-body{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}
+.v1-tournament-body>div{padding:10px;border-radius:10px;background:#12151a;border:1px solid #22262d}
+.v1-tournament-body span{display:block;font-size:6px;color:#78727b;text-transform:uppercase}.v1-tournament-body b{display:block;font-size:10px;margin-top:4px}
+.v1-decision-clock{margin-left:auto;min-width:42px;text-align:center;padding:5px 7px;border-radius:9px;background:#14171c;border:1px solid #292d34}
+.v1-decision-clock b{display:block;font-size:9px;color:#fff}.v1-decision-clock span{display:block;font-size:5px;color:#8c858e;margin-top:2px}.v1-decision-clock.used{border-color:#c92b68;box-shadow:0 0 16px rgba(255,46,125,.3)}
+.v1-turn-status{margin-left:0}
+.v1-context{align-items:center;gap:6px;flex-wrap:wrap}
+.v1-timebank-btn{margin-left:auto;border:1px solid #513048;background:#23131d;color:#ff8fbd;border-radius:999px;padding:4px 7px;font-size:5px;font-weight:900;letter-spacing:.04em}
+.v1-timebank-btn:disabled{opacity:.38}
+@media(max-width:390px){
+  .v1-mini-icon{width:24px;height:24px}.v1-title{max-width:105px}.v1-live-hud>div{min-width:40px}.v1-live-hud{top:4px}
+}

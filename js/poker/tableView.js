@@ -35,7 +35,7 @@ function clock(sec){sec=Math.max(0,Math.floor(Number(sec)||0));return `${Math.fl
 export class TableView{
   constructor({root,players,heroNick}){
     this.root=root;this.players=players;this.heroNick=heroNick;
-    this.seats=new Map();this.board=[];this.controlsState=null;
+    this.seats=new Map();this.board=[];this.controlsState=null;this.actionLog=[];this.tournamentOpen=false;
     this.build();
   }
 
@@ -45,8 +45,10 @@ export class TableView{
         <header class="v1-top">
           <button id="v1Exit" class="v1-icon">×</button>
           <div class="v1-title"><b>POKER SWIPE</b><span>/ KATALY · <i id="v1Hand">HAND #1</i></span></div>
+          <button id="v1History" class="v1-mini-icon" title="История">≡</button>
+          <button id="v1SitOut" class="v1-mini-icon" title="Sit out">Ⅱ</button>
           <button id="v1Tournament" class="v1-tourney">
-            <b id="v1Level">LVL 1 · 5:00</b>
+            <b id="v1Level">LVL 1 · 2:00</b>
             <span id="v1Blinds">50 / 100 / 100 BBA</span>
           </button>
         </header>
@@ -59,12 +61,20 @@ export class TableView{
             <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div>
           </div>
           <div id="v1Seats" class="v1-seats"></div>
+          <div class="v1-live-hud">
+            <div><span>LEFT</span><b id="v1Left">6/6</b></div>
+            <div><span>AVG</span><b id="v1Avg">100 BB</b></div>
+            <div><span>YOU</span><b id="v1Rank">1/6</b></div>
+          </div>
           <div id="v1Banner" class="v1-banner"></div>
+          <div id="v1HistoryDrawer" class="v1-history-drawer"><div class="v1-drawer-head"><b>ACTION HISTORY</b><button data-close-history>×</button></div><div id="v1ActionLog" class="v1-action-log"></div></div>
+          <div id="v1TournamentPanel" class="v1-tournament-panel"><div class="v1-drawer-head"><b>TOURNAMENT</b><button data-close-tournament>×</button></div><div class="v1-tournament-body"><div><span>Players left</span><b id="v1InfoLeft">6 / 6</b></div><div><span>Average</span><b id="v1InfoAvg">100 BB</b></div><div><span>Your place</span><b id="v1InfoRank">1 / 6</b></div><div><span>Next blinds</span><b id="v1NextBlinds">75 / 150</b></div></div></div>
         </div>
 
         <div class="v1-hero-strip">
           <div id="v1HeroCards" class="v1-hero-cards"></div>
           <div class="v1-hero-meta"><span id="v1HeroPos">—</span><b id="v1HeroStack">—</b></div>
+          <div class="v1-decision-clock"><b id="v1DecisionSeconds">—</b><span id="v1TimeBankLabel">TB 30s</span></div>
           <div id="v1TurnStatus" class="v1-turn-status">РАЗДАЧА</div>
         </div>
 
@@ -98,6 +108,8 @@ export class TableView{
         dealer:seat.querySelector('.v1-dealer'),ring:seat.querySelector('.v1-ring')
       });
     });
+    const ch=this.root.querySelector('[data-close-history]');if(ch)ch.onclick=()=>this.toggleHistory(false);
+    const ct=this.root.querySelector('[data-close-tournament]');if(ct)ct.onclick=()=>this.toggleTournamentPanel(false);
   }
 
   seatPos(i,n){
@@ -113,6 +125,15 @@ export class TableView{
     this.root.querySelector('#v1Blinds').textContent=`${money(s.sb)} / ${money(s.bb)} / ${money(s.ante)} BBA`;
     this.root.querySelector('#v1Pot').textContent=money(s.pot);
     this.root.querySelector('#v1PotBB').textContent=`${bb(s.potBB)} BB`;
+    const left=`${s.activePlayers}/${s.totalPlayers}`;
+    const rank=s.heroRank?`${s.heroRank}/${s.activePlayers}`:'OUT';
+    this.root.querySelector('#v1Left').textContent=left;
+    this.root.querySelector('#v1Avg').textContent=`${bb(s.averageStackBB)} BB`;
+    this.root.querySelector('#v1Rank').textContent=rank;
+    this.root.querySelector('#v1InfoLeft').textContent=left;
+    this.root.querySelector('#v1InfoAvg').textContent=`${bb(s.averageStackBB)} BB`;
+    this.root.querySelector('#v1InfoRank').textContent=rank;
+    this.root.querySelector('#v1NextBlinds').textContent=`${money(s.nextSB)} / ${money(s.nextBB)} / ${money(s.nextAnte)}`;
 
     s.players.forEach((p,i)=>{
       const seat=this.seats.get(i);if(!seat)return;
@@ -255,18 +276,69 @@ export class TableView{
     setTimeout(()=>banner.classList.remove('show'),1200);
   }
 
-  showHandResult(summary){
+  showHandResult(summary,review){
     const banner=this.root.querySelector('#v1Banner');
-    banner.innerHTML=`<b>${summary.winners.includes(this.heroNick)?'БАНК ТВОЙ':'РУКА ЗАВЕРШЕНА'}</b><span>${summary.winners.join(', ')}</span>`;
-    banner.classList.add('show');
-    setTimeout(()=>banner.classList.remove('show'),1000);
+    const won=summary.winners.includes(this.heroNick);
+    let note='';
+    if(review&&review.stats&&review.stats.decisions){
+      const issue=(review.errors&&review.errors[0])||(review.warnings&&review.warnings[0]);
+      note=issue?`${issue.title} · ${issue.score}/100`:`Решения ${review.overall}/100`;
+    }
+    banner.innerHTML=`<b>${won?'БАНК ТВОЙ':'РУКА ЗАВЕРШЕНА'}</b><span>${summary.winners.join(', ')}${note?` · ${note}`:''}</span>`;
+    banner.classList.add('show',won?'win':'');
+    setTimeout(()=>banner.classList.remove('show','win'),2200);
+  }
+
+  toggleHistory(force){
+    const d=this.root.querySelector('#v1HistoryDrawer');if(!d)return;
+    const open=typeof force==='boolean'?force:!d.classList.contains('open');
+    d.classList.toggle('open',open);
+  }
+
+  toggleTournamentPanel(force){
+    const d=this.root.querySelector('#v1TournamentPanel');if(!d)return;
+    const open=typeof force==='boolean'?force:!d.classList.contains('open');
+    d.classList.toggle('open',open);
+  }
+
+  logAction(entry={}){
+    this.actionLog.push(entry);if(this.actionLog.length>40)this.actionLog.shift();
+    const wrap=this.root.querySelector('#v1ActionLog');if(!wrap)return;
+    wrap.innerHTML=this.actionLog.slice().reverse().map(x=>x.kind==='street'
+      ?`<div class="v1-log-street">${x.text||''}</div>`
+      :`<div class="v1-log-row ${x.kind||''}"><span>${x.street?String(x.street).toUpperCase():''}</span><b>${x.nick||''}</b><em>${x.text||''}</em></div>`).join('');
+  }
+
+  updateDecisionClock(seconds,timeBank){
+    const a=this.root.querySelector('#v1DecisionSeconds'),b=this.root.querySelector('#v1TimeBankLabel');
+    if(a)a.textContent=seconds>0?`${seconds}s`:'0s';
+    if(b)b.textContent=`TB ${timeBank}s`;
+  }
+
+  flashTimeBank(added,left){
+    this.updateDecisionClock(added,left);
+    const el=this.root.querySelector('.v1-decision-clock');if(!el)return;
+    el.classList.add('used');setTimeout(()=>el.classList.remove('used'),450);
+    const btn=this.root.querySelector('#v1TimeBank');if(btn){btn.textContent=`TIME BANK +10s · ${left}s`;if(left<=0)btn.disabled=true;}
+  }
+
+  setSitOut(active){
+    const b=this.root.querySelector('#v1SitOut');if(!b)return;
+    b.classList.toggle('active',active);b.textContent=active?'▶':'Ⅱ';b.title=active?'Вернуться в игру':'Sit out';
+    this.showWaiting(active?'SIT OUT · авто-check/fold':'Возвращаемся в игру');
+  }
+
+  showTournamentEnd(result,prize){
+    const banner=this.root.querySelector('#v1Banner');if(!banner)return;
+    banner.innerHTML=`<b>${result.heroPlace===1?'ПОБЕДА':`${result.heroPlace} МЕСТО`}</b><span>${prize?`Приз ${money(prize)}`:'Вне призов'} · ${result.handNo} рук</span>`;
+    banner.classList.add('show',result.heroPlace===1?'win':'');
   }
 
   showWaiting(text='Ждём действия'){
     this.root.querySelector('#v1Controls').innerHTML=`<div class="v1-waiting">${text}</div>`;
   }
 
-  renderHeroControls(legal,onAction,street='preflop'){
+  renderHeroControls(legal,onAction,street='preflop',extras={}){
     const c=this.root.querySelector('#v1Controls');
     const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise;
     let selected=Math.min(max,Math.max(min,legal.currentBet||min));
@@ -280,6 +352,7 @@ export class TableView{
         <span>POT ${bb(legal.potBB)} BB</span>
         <span>${legal.canCheck?'CHECK':`TO CALL ${call} BB`}</span>
         <span>STACK ${bb(legal.stackBB)} BB</span>
+        <button id="v1TimeBank" class="v1-timebank-btn" ${extras.timeBank>0?'':'disabled'}>TIME BANK +10s · ${extras.timeBank||0}s</button>
       </div>
       <div class="v1-main-actions">
         <button data-a="fold" class="fold">FOLD</button>
@@ -292,6 +365,7 @@ export class TableView{
         <button id="v1RaiseConfirm" class="confirm">RAISE TO <b>${bb(selected/legal.bb)} BB</b></button>
       </div>`;
 
+    const tb=c.querySelector('#v1TimeBank');if(tb&&extras.onTimeBank)tb.onclick=()=>extras.onTimeBank();
     c.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>onAction({type:b.dataset.a}));
     const drawer=c.querySelector('#v1RaiseDrawer'),range=c.querySelector('#v1Range'),confirm=c.querySelector('#v1RaiseConfirm');
     const sync=()=>{selected=Number(range.value);confirm.innerHTML=`RAISE TO <b>${bb(selected/legal.bb)} BB</b>`};

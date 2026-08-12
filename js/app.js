@@ -1,5 +1,5 @@
-import { analyzeSession } from './analytics/sessionAnalysis.js?v=114';
-import { mountPokerTable } from './tableUI.js?v=114';
+import { analyzeSession } from './analytics/sessionAnalysis.js?v=130';
+import { mountPokerTable } from './tableUI.js?v=130';
 
 import { state, saveState } from './state.js?v=114';
 import { makeBots } from './bots/botEngine.js?v=114';
@@ -181,8 +181,8 @@ function openLobby(lobby){
       <div class="felt-copy"><b>${lobby.seats}-MAX</b><span>50 / 100</span></div>
     </div>
     <div class="lobby-summary"><div><span>Людей</span><b>${lobby.realPlayers.length}</b></div><div><span>Ботов</span><b>${bots.length}</b></div><div><span>Мест</span><b>${lobby.seats}</b></div></div>
-    <div class="engine-test-note">ENGINE TEST · БАЙ-ИН НЕ СПИСЫВАЕТСЯ</div>
-    <button class="btn btn-primary" id="startDemo" style="width:100%">СЕСТЬ ЗА СТОЛ</button>
+    <div class="engine-test-note">TURBO MTT · BBA · уровни 2:00 · выплаты TOP-3</div>
+    <button class="btn btn-primary" id="startDemo" style="width:100%">ИГРАТЬ</button>
     <button class="btn btn-ghost" id="leaveLobby" style="width:100%">НАЗАД</button>
   </div>`;
   document.body.appendChild(wrap);
