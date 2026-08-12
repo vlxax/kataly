@@ -62,7 +62,7 @@ export class TableController{
 
   onHeroDecision(legal,resolve){
     this.pendingLegal=legal;this.pendingResolve=resolve;
-    this.view.renderHeroControls(legal,action=>this.submitHero(action),this.lastSnapshot?.street||'preflop');
+    this.view.renderHeroControls(legal,action=>this.submitHero(action),(this.lastSnapshot && this.lastSnapshot.street) || 'preflop');
   }
 
   submitHero(action){
