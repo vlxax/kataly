@@ -269,3 +269,7 @@ PokerEngine → PokerEventBus → TableController → TableView
 - 18-second turn ring restored.
 - Hand history records potBefore, potAfter, decisionMs, playersInHand, effectiveStackBB.
 - Bots now use current made-hand rank postflop instead of only starting-hand strength.
+
+
+## V1.1.3
+Исправлен parser error в js/poker/tableView.js: удалена лишняя закрывающая фигурная скобка в конце файла.
