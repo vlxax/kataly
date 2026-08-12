@@ -1,6 +1,6 @@
 
-import { HoldemDemo } from './engine.js';
-import { TableView } from './tableView.js';
+import { HoldemDemo } from './engine.js?v=112';
+import { TableView } from './tableView.js?v=112';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -62,7 +62,7 @@ export class TableController{
 
   onHeroDecision(legal,resolve){
     this.pendingLegal=legal;this.pendingResolve=resolve;
-    this.view.renderHeroControls(legal,action=>this.submitHero(action),(this.lastSnapshot && this.lastSnapshot.street) || 'preflop');
+    this.view.renderHeroControls(legal,action=>this.submitHero(action),this.lastSnapshot?.street||'preflop');
   }
 
   submitHero(action){

@@ -1,6 +1,6 @@
 
-import { createDeck, shuffle } from './deck.js';
-import { PokerEventBus } from './eventBus.js';
+import { createDeck, shuffle } from './deck.js?v=112';
+import { PokerEventBus } from './eventBus.js?v=112';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
