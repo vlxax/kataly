@@ -44,7 +44,7 @@ export class TableView{
       <div class="v1-shell">
         <header class="v1-top">
           <button id="v1Exit" class="v1-icon">×</button>
-          <div class="v1-title"><b>КАТАЛЫ</b><span id="v1Hand">HAND #1</span></div>
+          <div class="v1-title"><b>POKER SWIPE</b><span>/ KATALY · <i id="v1Hand">HAND #1</i></span></div>
           <button id="v1Tournament" class="v1-tourney">
             <b id="v1Level">LVL 1 · 5:00</b>
             <span id="v1Blinds">50 / 100 / 100 BBA</span>

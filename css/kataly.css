@@ -666,3 +666,170 @@ button{cursor:pointer}
   .v1-felt{width:min(86vw,360px)}
   .v1-seat{width:100px}.v1-avatar{width:38px;height:38px}
 }
+
+
+/* ===== V1.1.5 REFERENCE TABLE LAYOUT ===== */
+/* Rebuild the presentation layer around the approved mobile reference.
+   Poker logic is unchanged. No decorative chip pile is rendered in the center. */
+.v1-shell{
+  max-width:440px;
+  background:radial-gradient(circle at 50% 41%,rgba(23,75,57,.11),transparent 35%),#050607;
+}
+.v1-top{left:14px;right:14px;height:50px}
+.v1-title b{font-size:12px;letter-spacing:.035em}
+.v1-title span{font-size:8px;color:#9b969d;letter-spacing:.045em}
+.v1-title i{font-style:normal;color:#77727a}
+.v1-tourney b{font-size:8px}.v1-tourney span{font-size:6px}
+
+.v1-table-stage{
+  top:calc(66px + env(safe-area-inset-top));
+  bottom:202px;
+  overflow:visible;
+}
+.v1-felt{
+  left:50%;top:50%;right:auto;bottom:auto;
+  width:min(86vw,382px);
+  height:auto;
+  aspect-ratio:857/1536;
+  transform:translate(-50%,-50%);
+  background:#050606 url('../assets/v1_1/table.jpeg') center/contain no-repeat;
+  border:0;border-radius:0;box-shadow:none;overflow:visible;
+}
+
+/* Pot is a compact pill ABOVE the board, like the approved reference. */
+.v1-pot{
+  top:37.5%;
+  display:flex;align-items:center;gap:4px;
+  padding:6px 10px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:999px;
+  background:rgba(7,16,13,.84);
+  box-shadow:0 5px 16px rgba(0,0,0,.34);
+  white-space:nowrap;
+}
+.v1-pot span{display:inline;font-size:7px;color:#d4d0d3;font-weight:900;letter-spacing:.05em}
+.v1-pot b{display:none}
+.v1-pot em{display:inline;font-size:9px;color:#f4e7c4;font-weight:900}
+
+.v1-board{top:47%;gap:5px;z-index:7}
+.v1-board .v1-card{width:48px;height:68px;border-radius:8px}
+.v1-board .v1-card:after{inset:4px;border-radius:6px}
+.v1-board .v1-card b{left:6px;top:5px;font-size:15px}
+.v1-board .v1-card span{left:6px;top:21px;font-size:11px}
+.v1-board .v1-card i{font-size:28px}
+
+/* Keep the dealing anchor but make the physical deck invisible. */
+.v1-deck{top:25%;opacity:0;pointer-events:none}
+
+/* Explicitly remove all decorative/flying chip objects from the center. */
+.v1-chip-layer,.v1-chip-flight,.v1-collect-chip{display:none!important}
+
+/* 6-max seats: avatars overlap the rail, info boxes stay compact. */
+.v1-seat{width:116px;z-index:10}
+.v1-avatar{
+  width:46px;height:46px;margin:0 auto -10px;
+  border:2px solid #5a5e67;
+  background-position:center 25%;
+  box-shadow:0 5px 18px #000c,0 0 0 1px rgba(255,255,255,.08);
+  position:relative;z-index:4;
+}
+.v1-avatar.hero-avatar{
+  width:49px;height:49px;border:3px solid #ff2e7d;
+  box-shadow:0 6px 18px #000d,0 0 0 3px rgba(255,46,125,.16),0 0 22px rgba(255,46,125,.62);
+}
+.v1-playerbox{
+  min-width:106px;
+  padding:10px 7px 6px;
+  border-radius:10px;
+  background:linear-gradient(180deg,rgba(31,33,39,.96),rgba(13,15,19,.97));
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:0 7px 18px rgba(0,0,0,.58);
+  position:relative;
+}
+.v1-name{font-size:8px;overflow:visible;text-overflow:clip}
+.v1-stack{font-size:7px;color:#d9c78f;margin-top:3px}
+.v1-name em{
+  position:absolute;
+  left:50%;top:calc(100% + 5px);
+  transform:translateX(-50%);
+  min-width:28px;padding:4px 7px;
+  border-radius:999px;
+  background:linear-gradient(180deg,#5a223b,#351522);
+  border:1px solid rgba(255,79,139,.28);
+  color:#ff8fb5;
+  font-size:7px;font-weight:1000;
+  box-shadow:0 4px 12px #0008;
+  z-index:5;
+}
+.v1-seat.hero-avatar .v1-name em{background:#721b45}
+.v1-dealer{left:2px;bottom:-8px;z-index:8}
+.v1-bet{top:calc(100% + 25px);z-index:8}
+.v1-action{right:-6px;top:39px;z-index:9}
+.v1-ring{top:24px;width:52px;height:52px}
+
+/* Opponent hole cards use the approved back design and sit just above avatars. */
+.v1-seat-cards{height:34px;gap:2px;margin-bottom:-2px}
+.v1-seat-cards .v1-card{width:23px;height:33px;border-radius:4px}
+
+/* Hero hand lives directly above the action controls, as in the reference. */
+.v1-hero-strip{
+  left:12px;right:12px;bottom:145px;height:62px;
+  border-radius:14px;
+  padding:5px 9px;
+  background:linear-gradient(180deg,rgba(22,24,29,.90),rgba(9,11,14,.93));
+  border:1px solid rgba(255,255,255,.12);
+  box-shadow:0 10px 28px rgba(0,0,0,.4);
+  z-index:30;
+}
+.v1-hero-cards{min-width:102px;min-height:60px;align-items:center}
+.v1-hero-cards .v1-card{width:46px;height:62px;border-radius:7px}
+.v1-hero-cards .v1-card b{font-size:14px}.v1-hero-cards .v1-card span{font-size:10px}.v1-hero-cards .v1-card i{font-size:25px}
+.v1-hero-meta span{font-size:7px}.v1-hero-meta b{font-size:10px}
+.v1-turn-status{font-size:7px;border-radius:999px;padding:7px 10px}
+.v1-turn-status.hero{background:#8c1b4c;color:#fff;box-shadow:0 0 16px rgba(255,46,125,.24)}
+
+/* Bottom controls mirror the reference: three large dimensional actions. */
+.v1-controls{
+  left:12px;right:12px;bottom:calc(8px + env(safe-area-inset-bottom));height:128px;
+  padding:8px;border-radius:17px;
+  background:rgba(8,10,13,.92);
+  border:1px solid rgba(255,255,255,.11);
+  box-shadow:0 12px 30px rgba(0,0,0,.42);
+  z-index:31;
+}
+.v1-context{margin-bottom:7px;font-size:6px;color:#a09aa1}
+.v1-main-actions{grid-template-columns:1fr 1fr 1.15fr;gap:7px}
+.v1-main-actions button{
+  height:52px;border-radius:13px;font-size:10px;letter-spacing:.01em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 7px 18px rgba(0,0,0,.32)
+}
+.v1-main-actions .fold{
+  color:#f2dbe2;background:linear-gradient(180deg,#4a3a40,#24191d);
+  border-color:#69545c;
+}
+.v1-main-actions .call{
+  color:#e4fff4;background:linear-gradient(180deg,#315545,#18291f);
+  border-color:#527764;
+}
+.v1-main-actions .raise{
+  color:#fff;background:linear-gradient(180deg,#ff4b8d,#d91560);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 0 0 1px rgba(255,77,143,.36),0 8px 24px rgba(255,46,125,.28)
+}
+.v1-raise-drawer{margin-top:6px}
+.v1-presets{grid-template-columns:repeat(5,1fr)}
+.v1-raise-drawer input{accent-color:#ff2e7d}
+
+@media(max-width:390px){
+  .v1-felt{width:min(88vw,352px)}
+  .v1-seat{width:103px}
+  .v1-avatar{width:40px;height:40px}.v1-avatar.hero-avatar{width:44px;height:44px}
+  .v1-playerbox{min-width:96px;padding-left:5px;padding-right:5px}
+  .v1-board .v1-card{width:43px;height:61px}
+  .v1-hero-strip{bottom:140px}.v1-controls{height:124px}
+}
+@media(max-height:720px){
+  .v1-table-stage{bottom:194px}
+  .v1-hero-strip{bottom:137px;height:56px}
+  .v1-controls{height:122px}
+  .v1-main-actions button{height:46px}
+}

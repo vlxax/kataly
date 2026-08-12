@@ -1,3 +1,12 @@
+## KATALY V1.1.5 — reference table layout
+
+- Reworked table presentation to match the approved mobile reference.
+- Removed center/decorative chip visuals.
+- Pot moved above community cards.
+- Larger real bot avatars and detached position badges.
+- Larger board/hero cards and dimensional bottom action controls.
+- Poker engine/logic unchanged.
+
 # КАТАЛЫ V0.1
 
 Отдельный экспериментальный модуль для Poker Swipe.
