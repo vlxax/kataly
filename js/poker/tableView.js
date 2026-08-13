@@ -61,9 +61,11 @@ export class TableView{
             <div class="v1-pot"><span>POT</span><b id="v1Pot">0</b><em id="v1PotBB">0 BB</em></div>
           </div>
           <div id="v1Seats" class="v1-seats"></div>
-          <div class="v1-live-hud">
+          <div class="v1-live-hud" aria-label="Tournament status">
             <div><span>LEFT</span><b id="v1Left">6/6</b></div>
-            <div><span>AVG</span><b id="v1Avg">100 BB</b></div>
+            <i></i>
+            <div><span>AVG STACK</span><b id="v1Avg">100 BB</b></div>
+            <i></i>
             <div><span>YOU</span><b id="v1Rank">1/6</b></div>
           </div>
           <div id="v1Banner" class="v1-banner"></div>
@@ -183,15 +185,34 @@ export class TableView{
     setTimeout(()=>{ghost.remove();node.classList.add('deal-in');target.appendChild(node)},190);
   }
 
-  animateChipsFromSeat(seatIndex,label=''){
+  animateChipsFromSeat(seatIndex,label='',amount=0){
     const seat=this.seats.get(seatIndex);if(!seat)return;
     const layer=this.root.querySelector('#v1ChipLayer'),stage=this.root.querySelector('.v1-table-stage');
-    const sr=stage.getBoundingClientRect(),r=seat.root.getBoundingClientRect();
-    const chip=document.createElement('div');chip.className='v1-chip-flight';chip.textContent='●';
-    chip.style.left=(r.left-sr.left+r.width/2)+'px';chip.style.top=(r.top-sr.top+r.height/2)+'px';
-    layer.appendChild(chip);
-    requestAnimationFrame(()=>{chip.style.transform='translate(-50%,-50%) scale(.8)';chip.style.opacity='.25'});
-    setTimeout(()=>chip.remove(),260);
+    const pot=this.root.querySelector('.v1-pot');
+    if(!layer||!stage||!pot)return;
+
+    const sr=stage.getBoundingClientRect(),r=seat.root.getBoundingClientRect(),pr=pot.getBoundingClientRect();
+    const sx=r.left-sr.left+r.width/2, sy=r.top-sr.top+r.height/2;
+    const px=pr.left-sr.left+pr.width/2, py=pr.top-sr.top+pr.height/2;
+
+    // Ставка сначала едет не прямо в POT, а к betting line игрока.
+    // После завершения улицы collectBets() соберёт её в банк.
+    const tx=sx+(px-sx)*.48, ty=sy+(py-sy)*.48;
+    const count=Math.max(2,Math.min(4,Math.round((Number(amount)||0)/Math.max(1,(this.lastBB||100)))+1));
+
+    for(let i=0;i<count;i++){
+      const chip=document.createElement('div');
+      chip.className='v1-chip-flight';
+      chip.innerHTML='<i></i>';
+      chip.style.left=(sx+(i-1)*3)+'px';
+      chip.style.top=(sy-i*2)+'px';
+      layer.appendChild(chip);
+      requestAnimationFrame(()=>{
+        chip.style.transform=`translate(${tx-sx+(i-1)*2}px,${ty-sy-i*2}px) scale(.82)`;
+        chip.style.opacity='.92';
+      });
+      setTimeout(()=>chip.remove(),430+i*25);
+    }
   }
 
   async collectBets(){
@@ -201,7 +222,7 @@ export class TableView{
     this.seats.forEach(seat=>{
       if(!seat.bet.classList.contains('show'))return;
       const r=seat.bet.getBoundingClientRect();
-      const g=document.createElement('div');g.className='v1-collect-chip';g.textContent='●';
+      const g=document.createElement('div');g.className='v1-collect-chip';g.innerHTML='<i></i>';
       g.style.left=(r.left-sr.left+r.width/2)+'px';g.style.top=(r.top-sr.top+r.height/2)+'px';
       stage.appendChild(g);ghosts.push(g);
       requestAnimationFrame(()=>g.style.transform=`translate(${pr.left-r.left}px,${pr.top-r.top}px) scale(.65)`);
@@ -214,7 +235,7 @@ export class TableView{
   postForcedBet(e){
     const seat=this.seats.get(e.seat);if(!seat)return;
     seat.action.textContent=e.label;
-    this.animateChipsFromSeat(e.seat,e.label);
+    this.animateChipsFromSeat(e.seat,e.label,e.amount);
     seat.action.className='v1-action show forced';
     this.flashAction(seat,850);
   }
@@ -253,15 +274,22 @@ export class TableView{
 
   showPlayerAction(type,e){
     const seat=this.seats.get(e.seat);if(!seat)return;
+    const big=Math.max(1,this.lastBB||100);
     const labels={
-      PLAYER_FOLDED:'FOLD',PLAYER_CHECKED:'CHECK',PLAYER_CALLED:'CALL',
-      PLAYER_RAISED:'RAISE',PLAYER_ALLIN:'ALL-IN'
+      PLAYER_FOLDED:'FOLD',
+      PLAYER_CHECKED:'CHECK',
+      PLAYER_CALLED:e.amount?`CALL ${bb(e.amount/big)} BB`:'CALL',
+      PLAYER_RAISED:e.bet?`RAISE TO ${bb(e.bet/big)} BB`:'RAISE',
+      PLAYER_ALLIN:e.bet?`ALL-IN ${bb(e.bet/big)} BB`:'ALL-IN'
     };
     seat.action.textContent=labels[type]||type;
-    if(['PLAYER_CALLED','PLAYER_RAISED','PLAYER_ALLIN'].includes(type))this.animateChipsFromSeat(e.seat,type);
-    if(e.bet)seat.action.textContent+=` ${bb(e.bet/((this.lastBB)||100))} BB`;
+
+    if(['PLAYER_CALLED','PLAYER_RAISED','PLAYER_ALLIN'].includes(type)){
+      this.animateChipsFromSeat(e.seat,type,e.amount||e.bet||0);
+    }
+
     seat.action.className='v1-action show '+type.toLowerCase().replace('player_','');
-    this.flashAction(seat,1200);
+    this.flashAction(seat,type==='PLAYER_FOLDED'?900:1450);
   }
 
   flashAction(seat,ms){
@@ -390,32 +418,140 @@ export class TableView{
 
   renderHeroControls(legal,onAction,street='preflop',extras={}){
     const c=this.root.querySelector('#v1Controls');
-    const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise,step=Math.max(1,Math.round(legal.bb/2));
-    let selected=Math.max(min,Math.min(max,legal.currentBet?Math.round(legal.currentBet*2.5):Math.round(Math.max(legal.bb,legal.pot*.5))));
-    const pre=street==='preflop',verb=legal.currentBet?'RAISE':'BET';
+    if(!c)return;
+
+    const call=bb(legal.toCallBB);
+    const liveStacks=(this.lastSnapshot&&this.lastSnapshot.players||[]).filter(p=>!p.out&&!p.folded&&p.nick!==this.heroNick).map(p=>Number(p.stackBB)||0).filter(Boolean);
+    const effective=liveStacks.length?Math.min(Number(legal.stackBB)||0,Math.max(...liveStacks)):Number(legal.stackBB)||0;
+    const min=Number(legal.minRaise)||0;
+    const max=Number(legal.maxRaise)||0;
+    const step=Math.max(1,Math.round((Number(legal.bb)||1)/2));
+    const bbChips=Math.max(1,Number(legal.bb)||1);
+    const currentBet=Number(legal.currentBet)||0;
+    const facingBet=currentBet>0;
+    const pre=street==='preflop';
+    const verb=facingBet?'RAISE':'BET';
+
+    let selected=Math.max(
+      min,
+      Math.min(
+        max,
+        facingBet
+          ? Math.round(currentBet*2.5)
+          : Math.round(Math.max(bbChips,Number(legal.pot||0)*.5))
+      )
+    );
+
     const presets=pre
-      ? `<button data-bb="2">2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button><button data-bb="4">4x</button>`
-      : `<button data-p="0.25">25%</button><button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.66">66%</button><button data-p="1">POT</button>`;
+      ? `<button type="button" data-mult="2">2x</button>
+         <button type="button" data-mult="2.5">2.5x</button>
+         <button type="button" data-mult="3">3x</button>
+         <button type="button" data-mult="4">4x</button>`
+      : `<button type="button" data-pot="0.25">25%</button>
+         <button type="button" data-pot="0.33">33%</button>
+         <button type="button" data-pot="0.50">50%</button>
+         <button type="button" data-pot="0.66">66%</button>
+         <button type="button" data-pot="1">POT</button>`;
+
     c.innerHTML=`
-      <div class="v1-context"><span>POT ${bb(legal.potBB)} BB</span><span>${legal.canCheck?'CHECK':`TO CALL ${call} BB`}</span><span>STACK ${bb(legal.stackBB)} BB</span><button id="v1TimeBank" class="v1-timebank-btn" ${extras.timeBank>0?'':'disabled'}>TIME BANK +10s · ${extras.timeBank||0}s</button></div>
-      <div class="v1-main-actions"><button type="button" data-a="fold" class="fold">FOLD</button><button type="button" data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button><button type="button" id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${verb} ${legal.canRaise?bb(selected/legal.bb)+' BB':''}</button></div>
+      <div class="v1-context">
+        <span>POT <b>${bb(legal.potBB)} BB</b></span>
+        <span>${legal.canCheck?'CHECK':`TO CALL <b>${call} BB</b>`}</span>
+        <span>EFF <b>${bb(effective)} BB</b></span>
+        <button type="button" id="v1TimeBank" class="v1-timebank-btn" ${extras.timeBank>0?'':'disabled'}>TIME BANK +10s · ${extras.timeBank||0}s</button>
+      </div>
+      <div class="v1-main-actions">
+        <button type="button" data-a="fold" class="fold">FOLD</button>
+        <button type="button" data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button>
+        <button type="button" id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${verb} ${legal.canRaise?bb(selected/bbChips)+' BB':''}</button>
+      </div>
       <div id="v1RaiseDrawer" class="v1-raise-drawer open">
         <div class="v1-presets">${presets}<button type="button" data-allin="1">ALL-IN</button></div>
-        <div class="v1-size-line"><button type="button" data-step="-1">−</button><input id="v1Range" type="range" min="${min}" max="${max}" step="${step}" value="${selected}"><button type="button" data-step="1">+</button></div>
-        <div class="v1-size-entry"><input id="v1SizeBB" inputmode="decimal" type="number" step="0.5" value="${bb(selected/legal.bb)}"><span>BB</span></div>
-        <button type="button" id="v1RaiseConfirm" class="confirm">${verb} TO <b>${bb(selected/legal.bb)} BB</b></button>
+        <div class="v1-size-line">
+          <button type="button" data-step="-1">−</button>
+          <input id="v1Range" type="range" min="${min}" max="${max}" step="${step}" value="${selected}">
+          <button type="button" data-step="1">+</button>
+        </div>
+        <div class="v1-size-entry"><input id="v1SizeBB" inputmode="decimal" type="number" step="0.5" value="${bb(selected/bbChips)}"><span>BB</span></div>
+        <button type="button" id="v1RaiseConfirm" class="confirm">${verb} TO <b>${bb(selected/bbChips)} BB</b></button>
       </div>`;
-    const tb=c.querySelector('#v1TimeBank');if(tb&&extras.onTimeBank)tb.onclick=()=>extras.onTimeBank();
-    c.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>onAction({type:b.dataset.a}));
+
+    const tb=c.querySelector('#v1TimeBank');
+    if(tb&&extras.onTimeBank)tb.addEventListener('click',extras.onTimeBank,{once:false});
+
+    c.querySelectorAll('[data-a]').forEach(btn=>{
+      btn.addEventListener('click',()=>onAction({type:btn.dataset.a}));
+    });
+
     if(!legal.canRaise)return;
-    const drawer=c.querySelector('#v1RaiseDrawer'),range=c.querySelector('#v1Range'),entry=c.querySelector('#v1SizeBB'),confirm=c.querySelector('#v1RaiseConfirm'),open=c.querySelector('#v1RaiseOpen');
-    const set=x=>{selected=Math.max(min,Math.min(max,Math.round(Number(x)/step)*step));range.value=selected;entry.value=bb(selected/legal.bb);confirm.innerHTML=`${verb} TO <b>${bb(selected/legal.bb)} BB</b>`;open.textContent=`${verb} ${bb(selected/legal.bb)} BB`};
-    range.oninput=()=>set(range.value);entry.onchange=()=>set(Number(entry.value)*legal.bb);
-    c.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>set(selected+Number(b.dataset.step)*step));
-    c.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>set(legal.currentBet+legal.toCall+(legal.pot+legal.toCall)*Number(b.dataset.p)));
-    c.querySelectorAll('[data-bb]').forEach(b=>b.onclick=()=>set(legal.bb*Number(b.dataset.bb)));
-    c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});confirm.onclick=()=>onAction({type:'raise',amount:selected});
-    open.onclick=()=>{drawer.classList.add('open');entry.focus();entry.select()};set(selected);
+
+    const drawer=c.querySelector('#v1RaiseDrawer');
+    const range=c.querySelector('#v1Range');
+    const entry=c.querySelector('#v1SizeBB');
+    const confirm=c.querySelector('#v1RaiseConfirm');
+    const open=c.querySelector('#v1RaiseOpen');
+
+    const set=(raw,source='manual')=>{
+      let value=Number(raw);
+      if(!Number.isFinite(value))value=selected;
+      value=Math.round(value/step)*step;
+      selected=Math.max(min,Math.min(max,value));
+      range.value=String(selected);
+      entry.value=bb(selected/bbChips);
+      confirm.innerHTML=`${verb} TO <b>${bb(selected/bbChips)} BB</b>`;
+      open.textContent=`${verb} ${bb(selected/bbChips)} BB`;
+
+      c.querySelectorAll('.v1-presets button').forEach(b=>b.classList.remove('selected'));
+      if(source instanceof HTMLElement) source.classList.add('selected');
+    };
+
+    range.addEventListener('input',()=>set(range.value));
+    entry.addEventListener('input',()=>{
+      const raw=Number(String(entry.value).replace(',','.'));
+      if(Number.isFinite(raw))set(raw*bbChips);
+    });
+    entry.addEventListener('blur',()=>set(selected));
+
+    // Надёжные sizing presets.
+    // Обычный click — основной путь. touchend — fallback для Telegram/iOS,
+    // где быстрый tap иногда съедается scroll-контейнером.
+    let lastPresetAt=0;
+    const runPreset=(button)=>{
+      if(!button)return;
+      const now=Date.now();
+      if(now-lastPresetAt<180)return;
+      lastPresetAt=now;
+      activatePreset(button);
+    };
+    c.querySelectorAll('.v1-presets button').forEach(button=>{
+      button.onclick=(e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        runPreset(button);
+      };
+      button.addEventListener('touchend',e=>{
+        e.preventDefault();
+        e.stopPropagation();
+        runPreset(button);
+      },{passive:false});
+    });
+
+    c.querySelectorAll('[data-step]').forEach(btn=>{
+      btn.addEventListener('click',()=>set(selected+Number(btn.dataset.step)*step,btn));
+    });
+
+    confirm.addEventListener('click',()=>onAction({type:'raise',amount:selected}));
+    open.addEventListener('click',()=>{
+      drawer.classList.add('open');
+      drawer.scrollIntoView({block:'nearest'});
+      // Не открываем клавиатуру автоматически на телефоне.
+      if(!window.matchMedia('(pointer:coarse)').matches){
+        entry.focus({preventScroll:true});
+        entry.select();
+      }
+    });
+
+    set(selected);
   }
 
 }

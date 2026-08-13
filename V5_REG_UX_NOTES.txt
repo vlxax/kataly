@@ -1,0 +1,19 @@
+KATALY v5 — REG UX PASS
+
+1. PRESET BUTTONS FIXED
+- 2x / 2.5x / 3x / 4x now calculate from CURRENT BET when facing a bet/raise.
+- Open-raise presets calculate from 1 BB.
+- pointerdown + click fallback makes presets reliable on Mac mouse, trackpad, iPhone Safari and Telegram in-app browser.
+- larger hit targets and selected state added.
+
+2. TOURNAMENT HUD MOVED INTO TABLE
+- LEFT / AVG STACK / YOU is now a compact translucent poker-client HUD centered on the felt.
+- when board is dealt, HUD moves upward so community cards remain visually dominant.
+
+3. Existing fixes preserved
+- Hero controls anchored at bottom.
+- only one yellow bot-thinking indicator around avatar.
+- immediate Hero tournament result after bust.
+- sizing drawer remains available and clickable.
+
+Cache bust: v170.

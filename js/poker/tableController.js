@@ -1,5 +1,5 @@
-import { HoldemDemo } from './engine.js?v=160';
-import { TableView } from './tableView.js?v=160';
+import { HoldemDemo } from './engine.js?v=180';
+import { TableView } from './tableView.js?v=180';
 import { analyzeSession } from '../analytics/sessionAnalysis.js?v=130';
 
 export class TableController{
@@ -13,7 +13,7 @@ export class TableController{
     this.engine=new HoldemDemo({
       players,heroNick,stackBB:lobby.stackBB||100,smallBlind:50,bigBlind:100,levelSeconds:120,
       bigBlindAnte:true,botDelayMs:320,eventPaceMs:100,sessionSeconds:lobby.sessionSeconds||600,
-      onChange:s=>{this.lastSnapshot=s;this.view.lastBB=s.bb;this.view.updateSnapshot(s)},
+      onChange:s=>{this.lastSnapshot=s;this.view.lastSnapshot=s;this.view.lastBB=s.bb;this.view.updateSnapshot(s)},
       onHeroDecision:(legal,resolve)=>this.onHeroDecision(legal,resolve),
       onHandEnd:h=>this.onHandEnd(h),
       onTournamentEnd:r=>this.onTournamentEnd(r)

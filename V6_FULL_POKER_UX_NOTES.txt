@@ -1,0 +1,31 @@
+KATALY v6 — FULL POKER UX PASS
+
+Implemented from the full reg-style review:
+1. Reliable preflop sizing presets:
+   2x / 2.5x / 3x / 4x use direct click handlers + touchend fallback.
+   The chosen preset is highlighted, slider/input update, and the main CTA immediately shows the exact raise-to size.
+
+2. Correct action semantics:
+   CALL shows the amount called.
+   RAISE shows RAISE TO X BB.
+   ALL-IN shows final all-in size.
+
+3. Poker-client information hierarchy:
+   LEFT / AVG STACK / YOU stays compact inside the felt and shifts away when the board appears.
+   Hero context now shows POT / TO CALL or CHECK / EFFECTIVE STACK.
+
+4. Chip motion:
+   A subtle stack moves from the acting seat toward its betting line.
+   At the end of the street, committed bets collect into the pot.
+
+5. Natural bot timing:
+   Fast checks/trivial decisions can be quick.
+   Bigger bets, turns/rivers and pressure decisions take longer.
+   Tanks and time bank are concentrated on genuinely difficult spots rather than pure random delays.
+
+6. Existing fixes preserved:
+   Hero panel fixed at bottom.
+   One yellow thinking indicator only.
+   Hero bust = immediate tournament result.
+   Board lands on the felt.
+   Full multi-hand tournament loop.
