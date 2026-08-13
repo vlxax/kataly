@@ -884,3 +884,34 @@ button{cursor:pointer}
 .v1-flying-card.board-flight{transition:transform .34s cubic-bezier(.18,.82,.2,1),opacity .18s ease!important;z-index:50!important}
 .result-place{margin:12px 0;padding:14px;border-radius:16px;background:#11141a;border:1px solid #2a2e36;text-align:center}.result-place b{display:block;font-size:32px}.result-place span{font-size:8px;color:#8f8992;letter-spacing:.14em;font-weight:900}
 @media(max-width:700px){.v1-controls{max-height:245px}.v1-presets{display:flex!important;overflow-x:auto}.v1-presets button{min-width:48px}.v1-table-stage{bottom:225px!important}.v1-hero-strip{bottom:168px!important}}
+
+
+/* ===== KATALY v3: bust exits immediately + one thinking indicator ===== */
+.v1-turn-status.bot-hidden,.v1-decision-clock.bot-hidden{display:none!important}
+/* Bot thinking is ONLY the yellow ring around the avatar. */
+.v1-seat.bot-turn .v1-ring.show,
+.v1-seat.thinking .v1-ring.show{
+  background:conic-gradient(#ffd35e calc(var(--turn-progress,1)*360deg),rgba(92,76,34,.32) 0)!important;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0)!important;
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0)!important;
+}
+.v1-seat.bot-turn .v1-playerbox,
+.v1-seat.thinking .v1-playerbox{
+  border-color:#2b3038!important;
+  box-shadow:0 7px 18px #0007!important;
+}
+.v1-seat.bot-turn .v1-avatar,
+.v1-seat.thinking .v1-avatar{
+  box-shadow:0 0 0 2px #ffd35e,0 0 18px rgba(255,211,94,.22)!important;
+}
+.v1-seat.hero-turn .v1-ring.show{
+  background:conic-gradient(#ff2e7d calc(var(--turn-progress,1)*360deg),#33232b 0)!important;
+}
+.v1-seat.hero-turn .v1-playerbox{
+  border-color:#9e315d!important;
+  box-shadow:0 0 0 1px #7a2147,0 0 20px #c9236540!important;
+}
+.v1-controls,.v1-controls *{pointer-events:auto}
+.v1-controls{position:relative;z-index:80}
+.v1-main-actions button,.v1-presets button,.v1-size-line button,.v1-size-entry input,.v1-raise-drawer input{position:relative;z-index:82}
+.v1-main-actions button:disabled{pointer-events:none}

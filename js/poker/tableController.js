@@ -1,5 +1,5 @@
-import { HoldemDemo } from './engine.js?v=130';
-import { TableView } from './tableView.js?v=130';
+import { HoldemDemo } from './engine.js?v=150';
+import { TableView } from './tableView.js?v=150';
 import { analyzeSession } from '../analytics/sessionAnalysis.js?v=130';
 
 export class TableController{
@@ -178,12 +178,15 @@ export class TableController{
       actions,
       tournament:{...result,prize:this.payoutFor(result.heroPlace)}
     };
+    // Для Hero турнир заканчивается сразу в момент вылета: не заставляем
+    // смотреть дальнейший стол. Даём только короткий кадр завершения руки.
+    const delay=result.heroPlace===1?650:180;
     setTimeout(()=>{
       if(this.cancelled)return;
       this.cancelled=true;
       this.root.remove();
       if(this.onSessionEnd)this.onSessionEnd(payload);
-    },2200);
+    },delay);
   }
 
   start(){

@@ -231,11 +231,24 @@ export class TableView{
   }
 
   setTurn(e){
-    this.seats.forEach(s=>s.ring.classList.remove('show'));
-    const seat=this.seats.get(e.seat);if(seat)seat.ring.classList.add('show');
-    this.root.querySelector('#v1TurnStatus').textContent=
-      e.nick===this.heroNick?'ТВОЙ ХОД':`${e.nick} думает…`;
-    this.root.querySelector('#v1TurnStatus').classList.toggle('hero',e.nick===this.heroNick);
+    this.seats.forEach(s=>{
+      s.ring.classList.remove('show');
+      s.root.classList.remove('hero-turn','bot-turn');
+    });
+    const seat=this.seats.get(e.seat);
+    const hero=e.nick===this.heroNick;
+    if(seat){
+      seat.ring.classList.add('show');
+      seat.root.classList.add(hero?'hero-turn':'bot-turn');
+    }
+    const status=this.root.querySelector('#v1TurnStatus');
+    const clock=this.root.querySelector('.v1-decision-clock');
+    if(status){
+      status.textContent=hero?'ТВОЙ ХОД':'';
+      status.classList.toggle('hero',hero);
+      status.classList.toggle('bot-hidden',!hero);
+    }
+    if(clock)clock.classList.toggle('bot-hidden',!hero);
   }
 
   showPlayerAction(type,e){
@@ -342,29 +355,34 @@ export class TableView{
 
   setBotThinking(seatIndex,plan={}){
     const seat=this.seats.get(seatIndex);if(!seat)return;
-    seat.root.classList.add('thinking');
-    seat.action.textContent=plan.mode==='timebank'?'TIME BANK':'ДУМАЕТ';
-    seat.action.className='v1-action show thinking';
+    // У бота только один индикатор мышления: жёлтый круг вокруг аватара.
+    // Никаких вторых жёлтых/розовых плашек и текста «думает» на панели Hero.
+    seat.root.classList.add('thinking','bot-turn');
+    seat.action.textContent='';
+    seat.action.className='v1-action';
   }
 
   updateBotThinking(seatIndex,left){
-    const seat=this.seats.get(seatIndex);if(!seat)return;
-    const p=this.players[seatIndex];
-    seat.action.textContent=`${p&&p.nick?p.nick:'BOT'} · ${left}s`;
+    // Намеренно ничего не рисуем: оставляем только жёлтый круг у самого игрока.
   }
 
   clearBotThinking(seatIndex){
     const seat=this.seats.get(seatIndex);if(!seat)return;
-    seat.root.classList.remove('thinking');
+    seat.root.classList.remove('thinking','bot-turn');
+    seat.action.textContent='';
+    seat.action.className='v1-action';
   }
 
   showWaiting(text='Ждём действия'){ this.setHeroControlsIdle(text); }
 
   setHeroControlsIdle(text='Ждём твоего хода'){
     const c=this.root.querySelector('#v1Controls');if(!c)return;
-    c.innerHTML=`<div class="v1-context"><span>${text}</span><span>ПАНЕЛЬ HERO</span><span>BET / RAISE доступен в твой ход</span></div>
+    // Панель Hero всегда на месте, но без сдвоенных CHECK/CALL и BET/RAISE.
+    c.innerHTML=`<div class="v1-context"><span>${text}</span><span>ПАНЕЛЬ HERO</span></div>
       <div class="v1-main-actions idle-actions">
-        <button class="fold" disabled>FOLD</button><button class="call" disabled>CHECK / CALL</button><button class="raise" disabled>BET / RAISE</button>
+        <button type="button" class="fold" disabled>FOLD</button>
+        <button type="button" class="call" disabled>CHECK</button>
+        <button type="button" class="raise" disabled>BET</button>
       </div>`;
   }
 
@@ -378,12 +396,12 @@ export class TableView{
       : `<button data-p="0.25">25%</button><button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.66">66%</button><button data-p="1">POT</button>`;
     c.innerHTML=`
       <div class="v1-context"><span>POT ${bb(legal.potBB)} BB</span><span>${legal.canCheck?'CHECK':`TO CALL ${call} BB`}</span><span>STACK ${bb(legal.stackBB)} BB</span><button id="v1TimeBank" class="v1-timebank-btn" ${extras.timeBank>0?'':'disabled'}>TIME BANK +10s · ${extras.timeBank||0}s</button></div>
-      <div class="v1-main-actions"><button data-a="fold" class="fold">FOLD</button><button data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button><button id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${verb} ${legal.canRaise?bb(selected/legal.bb)+' BB':''}</button></div>
+      <div class="v1-main-actions"><button type="button" data-a="fold" class="fold">FOLD</button><button type="button" data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button><button type="button" id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${verb} ${legal.canRaise?bb(selected/legal.bb)+' BB':''}</button></div>
       <div id="v1RaiseDrawer" class="v1-raise-drawer open">
-        <div class="v1-presets">${presets}<button data-allin="1">ALL-IN</button></div>
-        <div class="v1-size-line"><button data-step="-1">−</button><input id="v1Range" type="range" min="${min}" max="${max}" step="${step}" value="${selected}"><button data-step="1">+</button></div>
+        <div class="v1-presets">${presets}<button type="button" data-allin="1">ALL-IN</button></div>
+        <div class="v1-size-line"><button type="button" data-step="-1">−</button><input id="v1Range" type="range" min="${min}" max="${max}" step="${step}" value="${selected}"><button type="button" data-step="1">+</button></div>
         <div class="v1-size-entry"><input id="v1SizeBB" inputmode="decimal" type="number" step="0.5" value="${bb(selected/legal.bb)}"><span>BB</span></div>
-        <button id="v1RaiseConfirm" class="confirm">${verb} TO <b>${bb(selected/legal.bb)} BB</b></button>
+        <button type="button" id="v1RaiseConfirm" class="confirm">${verb} TO <b>${bb(selected/legal.bb)} BB</b></button>
       </div>`;
     const tb=c.querySelector('#v1TimeBank');if(tb&&extras.onTimeBank)tb.onclick=()=>extras.onTimeBank();
     c.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>onAction({type:b.dataset.a}));

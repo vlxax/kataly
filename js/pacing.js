@@ -1,5 +1,5 @@
 /* KATALY human pacing v2.0 — loaded before app.js */
-import { HoldemDemo } from './poker/engine.js?v=130';
+import { HoldemDemo } from './poker/engine.js?v=150';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const rnd=(a,b)=>a+Math.random()*(b-a);

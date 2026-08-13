@@ -1,0 +1,9 @@
+KATALY v3 — fixes from live test
+
+1. Hero bust = immediate end of tournament for the user. No spectating after elimination.
+2. Final session/statistics screen opens immediately after bust.
+3. Bot thinking indicator simplified: only one yellow circular timer around that player avatar.
+4. Removed bot “is thinking…” text from Hero bottom area.
+5. Removed duplicate idle labels CHECK/CALL and BET/RAISE. Idle panel now shows FOLD / CHECK / BET; on Hero turn labels become exact legal actions.
+6. Raised controls z-index/pointer events and explicit button type for reliable sizing interaction.
+7. Cache versions bumped so GitHub Pages/SourceCraft does not keep old JS/CSS.
