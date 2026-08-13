@@ -1,0 +1,9 @@
+KATALY v7
+- Tournament LEFT / AVG STACK / YOU is now plain low-contrast text on the felt, no pill/card.
+- Added second quiet line for blinds and hand number.
+- Raise controls are collapsed by default.
+- Drag the pink dot / BET-RAISE button vertically: up increases size, down decreases.
+- Live floating bubble shows selected BB while dragging.
+- Releasing after a real drag commits the bet/raise.
+- Simple tap on BET/RAISE opens the precise presets/slider/manual fallback.
+- Existing multi-hand, bust result, human pacing, single bot-thinking glow and chip motion preserved.

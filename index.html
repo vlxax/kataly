@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#08090b" />
 <title>КАТАЛЫ · HUMAN TABLE PATCH</title>
-<link rel="stylesheet" href="./css/kataly.css?v=180" />
+<link rel="stylesheet" href="./css/kataly.css?v=200" />
 </head>
 <body>
 <div id="app"><div style="min-height:100vh;background:#08090b;color:#fff;display:grid;place-items:center;font-family:Arial,sans-serif;padding:24px;text-align:center"><div><b style="font-size:24px">КАТАЛЫ</b><p id="bootStatus" style="opacity:.65">Загрузка живого стола…</p></div></div></div>
@@ -22,11 +22,11 @@ const probes=[
   ['./js/bots/botEngine.js?v=120','bots/botEngine.js'],
   ['./js/multiplayer/lobby.js?v=120','multiplayer/lobby.js'],
   ['./js/poker/deck.js?v=120','poker/deck.js'],
-  ['./js/poker/eventBus.js?v=120','poker/eventBus.js'],
-  ['./js/poker/engine.js?v=180','poker/engine.js'],
-  ['./js/poker/tableView.js?v=180','poker/tableView.js'],
-  ['./js/poker/tableController.js?v=180','poker/tableController.js'],
-  ['./js/tableUI.js?v=180','tableUI.js'],
+  ['./js/poker/eventBus.js?v=200','poker/eventBus.js'],
+  ['./js/poker/engine.js?v=200','poker/engine.js'],
+  ['./js/poker/tableView.js?v=200','poker/tableView.js'],
+  ['./js/poker/tableController.js?v=200','poker/tableController.js'],
+  ['./js/tableUI.js?v=200','tableUI.js'],
   ['./js/analytics/sessionAnalysis.js?v=120','analytics/sessionAnalysis.js']
 ];
 
@@ -37,8 +37,8 @@ try{
   }
 
   // ВАЖНО: патч ставится ДО создания игрового стола.
-  await import('./js/pacing.js?v=180');
-  await import('./js/app.js?v=180');
+  await import('./js/pacing.js?v=200');
+  await import('./js/app.js?v=200');
 }catch(e){
   console.error(e);
 }

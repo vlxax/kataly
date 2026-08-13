@@ -1346,3 +1346,192 @@ button{cursor:pointer}
   .v1-chip-flight,.v1-collect-chip{width:12px!important;height:12px!important}
   .v1-context{gap:6px!important}
 }
+
+
+/* =====================================================================
+   KATALY v7 — POKER CLIENT FELT + DRAG RAISE
+   ===================================================================== */
+
+/* Tournament info is plain felt text, not a UI pill. */
+.v1-live-hud{
+  position:absolute!important;
+  left:50%!important;
+  top:56%!important;
+  transform:translate(-50%,-50%)!important;
+  min-width:0!important;
+  width:76%!important;
+  max-width:330px!important;
+  display:block!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  opacity:.64!important;
+  color:#d4d0c7!important;
+  text-align:center!important;
+  pointer-events:none!important;
+  z-index:8!important;
+}
+.v1-live-hud .v1-hud-line{
+  display:block!important;
+  font-size:7px!important;
+  line-height:1.45!important;
+  letter-spacing:.015em!important;
+  text-shadow:0 1px 2px #000!important;
+  white-space:nowrap!important;
+}
+.v1-live-hud .v1-hud-line span{
+  display:inline!important;
+  font-size:7px!important;
+  color:#b9b4ae!important;
+  letter-spacing:0!important;
+}
+.v1-live-hud .v1-hud-line b{
+  display:inline!important;
+  font-size:7px!important;
+  color:#e0ddd4!important;
+  font-weight:650!important;
+}
+.v1-live-hud .v1-hud-line em{
+  display:inline!important;
+  margin:0 4px!important;
+  color:#77736f!important;
+  font-style:normal!important;
+}
+.v1-live-hud .v1-hud-sub{
+  margin-top:2px!important;
+  font-size:6.5px!important;
+  line-height:1.35!important;
+  color:#aaa59f!important;
+  text-shadow:0 1px 2px #000!important;
+}
+.v1-table-stage:has(.v1-board .v1-card) .v1-live-hud{
+  top:67%!important;
+  opacity:.48!important;
+}
+
+/* Pot remains the primary center-of-table number. */
+.v1-pot{
+  z-index:19!important;
+  box-shadow:none!important;
+}
+
+/* Default: just 3 poker actions. Exact sizing controls are hidden until tap. */
+.v1-raise-drawer{
+  display:none!important;
+  max-height:0!important;
+  opacity:0!important;
+  overflow:hidden!important;
+  margin-top:0!important;
+  padding-top:0!important;
+  transition:max-height .18s ease,opacity .14s ease!important;
+}
+.v1-raise-drawer.open{
+  display:block!important;
+  max-height:190px!important;
+  opacity:1!important;
+  overflow-y:auto!important;
+  margin-top:5px!important;
+}
+
+/* PokerOK-like raise gesture: grab the dot / button and slide vertically. */
+.v1-drag-raise{
+  position:relative!important;
+  overflow:visible!important;
+  touch-action:none!important;
+}
+.v1-drag-raise>span{pointer-events:none!important}
+.v1-drag-knob{
+  position:absolute!important;
+  left:50%!important;
+  top:-9px!important;
+  transform:translateX(-50%)!important;
+  width:18px!important;
+  height:18px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+  background:#ff3d83!important;
+  border:2px solid rgba(255,255,255,.82)!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 12px rgba(255,47,125,.34)!important;
+  color:#fff!important;
+  font-size:7px!important;
+  line-height:1!important;
+  font-style:normal!important;
+  pointer-events:none!important;
+}
+.v1-raise-bubble{
+  position:absolute!important;
+  right:13px!important;
+  bottom:76px!important;
+  width:108px!important;
+  min-height:54px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  border-radius:18px!important;
+  background:rgba(20,15,19,.94)!important;
+  border:1px solid rgba(255,67,137,.55)!important;
+  box-shadow:0 9px 28px rgba(0,0,0,.55),0 0 18px rgba(255,46,125,.16)!important;
+  opacity:0!important;
+  transform:translateY(8px) scale(.94)!important;
+  transition:opacity .12s,transform .12s!important;
+  pointer-events:none!important;
+  z-index:140!important;
+}
+.v1-raise-bubble.show{
+  opacity:1!important;
+  transform:translateY(0) scale(1)!important;
+}
+.v1-raise-bubble b{
+  color:#fff!important;
+  font-size:14px!important;
+  font-variant-numeric:tabular-nums!important;
+}
+.v1-raise-bubble span{
+  color:#9f9298!important;
+  font-size:6px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.06em!important;
+}
+
+/* More PokerOK-like felt density: table information, not floating cards. */
+.v1-seat .v1-playerbox{
+  background:linear-gradient(180deg,rgba(26,29,34,.96),rgba(14,16,20,.97))!important;
+  border-color:rgba(255,255,255,.13)!important;
+  box-shadow:0 4px 10px rgba(0,0,0,.48)!important;
+}
+.v1-seat .v1-stack{color:#c5d6df!important}
+.v1-position{
+  box-shadow:0 2px 6px rgba(0,0,0,.45)!important;
+}
+.v1-bet{
+  font-variant-numeric:tabular-nums!important;
+  box-shadow:0 3px 8px rgba(0,0,0,.42)!important;
+}
+
+/* Keep hero actions in thumb reach. */
+@media(max-width:520px){
+  .v1-live-hud{
+    top:55%!important;
+    width:82%!important;
+  }
+  .v1-table-stage:has(.v1-board .v1-card) .v1-live-hud{top:68%!important}
+  .v1-live-hud .v1-hud-line,
+  .v1-live-hud .v1-hud-line span,
+  .v1-live-hud .v1-hud-line b{font-size:6.5px!important}
+  .v1-live-hud .v1-hud-sub{font-size:6px!important}
+  .v1-drag-knob{
+    width:20px!important;height:20px!important;top:-10px!important;
+  }
+  .v1-raise-bubble{
+    right:8px!important;
+    bottom:72px!important;
+  }
+}

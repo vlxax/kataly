@@ -1,5 +1,5 @@
-import { HoldemDemo } from './engine.js?v=180';
-import { TableView } from './tableView.js?v=180';
+import { HoldemDemo } from './engine.js?v=200';
+import { TableView } from './tableView.js?v=200';
 import { analyzeSession } from '../analytics/sessionAnalysis.js?v=130';
 
 export class TableController{
@@ -7,6 +7,7 @@ export class TableController{
     this.root=root;this.lobby=lobby;this.heroNick=heroNick;this.onExit=onExit;this.onSessionEnd=onSessionEnd;
     this.cancelled=false;this.sessionClosed=false;this.lastSnapshot=null;this.lastHand=null;
     this.pendingResolve=null;this.pendingLegal=null;this.turnTimer=null;
+    this.nextHandTimer=null;this.resultTimer=null;this.watchdogTimer=null;this.lastProgressAt=Date.now();
     this.heroBaseSeconds=15;this.heroTimeBank=30;this.heroDeadline=0;this.heroSitOut=false;
     const players=(lobby.players||[]).map(p=>({nick:p.nick,type:p.type||'bot',style:p.style||''}));
     this.view=new TableView({root,players,heroNick});
@@ -25,7 +26,10 @@ export class TableController{
   }
 
   bindEvents(){
-    const on=(type,fn)=>this.engine.on(type,fn);
+    const on=(type,fn)=>this.engine.on(type,e=>{
+      this.lastProgressAt=Date.now();
+      try{fn(e)}catch(err){console.error('[KATALY controller event]',type,err)}
+    });
     on('HAND_STARTED',e=>{
       this.view.clearHand();
       this.view.setHeroControlsIdle('Ждём твоего хода');
@@ -139,8 +143,11 @@ export class TableController{
 
   onHandEnd(hand){
     this.lastHand=hand;
-    setTimeout(()=>{
-      if(!this.cancelled&&!this.engine.finished&&!this.engine.running)this.engine.startHand();
+    clearTimeout(this.nextHandTimer);
+    this.nextHandTimer=setTimeout(()=>{
+      if(!this.cancelled&&!this.engine.finished&&!this.engine.destroyed&&!this.engine.running){
+        this.engine.startHand();
+      }
     },2200);
   }
 
@@ -181,15 +188,32 @@ export class TableController{
     // Для Hero турнир заканчивается сразу в момент вылета: не заставляем
     // смотреть дальнейший стол. Даём только короткий кадр завершения руки.
     const delay=result.heroPlace===1?650:180;
-    setTimeout(()=>{
+    clearTimeout(this.resultTimer);
+    this.resultTimer=setTimeout(()=>{
       if(this.cancelled)return;
       this.cancelled=true;
+      clearTimeout(this.nextHandTimer);
+      clearInterval(this.watchdogTimer);
       this.root.remove();
-      if(this.onSessionEnd)this.onSessionEnd(payload);
+      if(this.onSessionEnd){
+        try{this.onSessionEnd(payload)}
+        catch(err){console.error('[KATALY onSessionEnd]',err)}
+      }
     },delay);
   }
 
   start(){
+    // Диагностический watchdog: не вмешивается в нормальный tank/time bank,
+    // но сообщает о настоящем зависании вместо вечного молчания интерфейса.
+    clearInterval(this.watchdogTimer);
+    this.watchdogTimer=setInterval(()=>{
+      if(this.cancelled||this.engine.finished||this.engine.destroyed)return;
+      const idle=Date.now()-this.lastProgressAt;
+      if(idle>45000&&!this.pendingResolve){
+        console.warn('[KATALY WATCHDOG] no engine progress for',Math.round(idle/1000),'sec');
+        this.view.showWaiting('Стол восстанавливает раздачу…');
+      }
+    },5000);
     this.engine.startHand().catch(err=>{
       console.error(err);this.view.showWaiting('Ошибка движка: '+err.message);
     });
@@ -199,6 +223,14 @@ export class TableController{
     if(this.cancelled)return;
     this.cancelled=true;
     if(this.pendingResolve){const r=this.pendingResolve;this.pendingResolve=null;r({type:'fold'});}
-    clearInterval(this.turnTimer);this.engine.destroy();this.root.remove();if(this.onExit)this.onExit();
+    clearInterval(this.turnTimer);
+    clearInterval(this.watchdogTimer);
+    clearTimeout(this.nextHandTimer);
+    clearTimeout(this.resultTimer);
+    this.engine.destroy();
+    this.root.remove();
+    if(this.onExit){
+      try{this.onExit()}catch(err){console.error('[KATALY onExit]',err)}
+    }
   }
 }

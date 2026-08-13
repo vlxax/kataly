@@ -1,0 +1,19 @@
+KATALY v8 — DUAL EXPERT AUDIT
+
+POKER-PRO AUDIT FIXES
+- Fixed a critical poker-engine error: when everyone folded, the last player was NOT receiving the pot.
+  The pot is now credited correctly and POT_AWARDED is emitted.
+- Uncontested winners are stored as player nick strings, so hand/session statistics are correct.
+- Multiple eliminations in the same hand now receive deterministic tournament places based on
+  their stack at the start of that hand (larger starting stack = higher finish).
+- Existing UX pass (plain felt tournament text, drag sizing, effective stack, action amounts) preserved.
+
+SENIOR JS / QA AUDIT FIXES
+- Event listeners are isolated: one UI exception no longer kills the whole engine loop.
+- onChange/onHeroDecision/onHandEnd/onTournamentEnd callbacks are guarded.
+- Engine now has a destroyed flag and raw event history.
+- Bot think delay is cancellable, so exiting during a 20s tank no longer leaves a long-running task.
+- Next-hand/result/watchdog timers are stored and cancelled on exit/end.
+- Added a 45s non-invasive watchdog warning for genuine stalls.
+- Added regression test for uncontested pot + event history + destroy lifecycle.
+- Cache bust moved to v200.

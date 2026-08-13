@@ -14,10 +14,16 @@ export class PokerEventBus {
   }
   emit(type, payload={}){
     const event = {type, ...payload, ts:Date.now()};
-    const direct = this.listeners.get(type);
-    if(direct) direct.forEach(fn => fn(event));
-    const all = this.listeners.get('*');
-    if(all) all.forEach(fn => fn(event));
+    const invoke=(set)=>{
+      if(!set)return;
+      // Один упавший UI-listener больше не может остановить весь poker engine.
+      [...set].forEach(fn=>{
+        try{ fn(event); }
+        catch(err){ console.error('[KATALY event listener]',type,err); }
+      });
+    };
+    invoke(this.listeners.get(type));
+    invoke(this.listeners.get('*'));
     return event;
   }
   clear(){

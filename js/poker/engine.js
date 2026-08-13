@@ -1,6 +1,6 @@
 
 import { createDeck, shuffle } from './deck.js?v=130';
-import { PokerEventBus } from './eventBus.js?v=130';
+import { PokerEventBus } from './eventBus.js?v=200';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -95,6 +95,8 @@ export class HoldemDemo {
     this.phase='waiting';this.currentBet=0;this.lastFullRaise=bigBlind;
     this.currentActorSeat=null;this.currentActorNick=null;
     this.deck=[];this.log=[];this.handActions=[];this.sessionHands=[];this.eliminations=[];this.decisionStartedAt=0;
+    this.handHistory=[]; // raw event stream used by diagnostics/tests
+    this.destroyed=false;
     this.running=false;this.finished=false;
     this.sessionSeconds=Math.max(60,Number(sessionSeconds)||600);this.sessionStartedAt=Date.now();this.sessionEndReason=null;
 
@@ -110,9 +112,18 @@ export class HoldemDemo {
 
   on(type,fn){return this.bus.on(type,fn)}
   event(type,payload={}){
-    return this.bus.emit(type,{handNo:this.handNo,street:this.street,...payload});
+    const event=this.bus.emit(type,{handNo:this.handNo,street:this.street,...payload});
+    this.handHistory.push(event);
+    if(this.handHistory.length>2500)this.handHistory.splice(0,this.handHistory.length-2000);
+    return event;
   }
-  destroy(){clearInterval(this.timer);this.bus.clear()}
+  destroy(){
+    if(this.destroyed)return;
+    this.destroyed=true;
+    clearInterval(this.timer);
+    this.currentActorSeat=null;this.currentActorNick=null;
+    this.bus.clear();
+  }
   hero(){return this.players.find(p=>p.nick===this.heroNick)}
   active(){return this.players.filter(p=>!p.out&&p.stack>0)}
   liveInHand(){return this.players.filter(p=>!p.out&&!p.folded)}
@@ -180,7 +191,13 @@ export class HoldemDemo {
       eliminations:this.eliminations.slice(),finished:this.finished,sessionRemaining:this.sessionRemaining(),sessionSeconds:this.sessionSeconds
     };
   }
-  emit(){if(this.onChange)this.onChange(this.snapshot())}
+  emit(){
+    if(this.destroyed)return;
+    if(this.onChange){
+      try{this.onChange(this.snapshot())}
+      catch(err){console.error('[KATALY onChange]',err)}
+    }
+  }
 
   postDead(player,amount,label){
     const paid=Math.min(Math.max(0,Math.round(amount)),player.stack);
@@ -224,7 +241,7 @@ export class HoldemDemo {
   }
 
   async startHand(){
-    if(this.running||this.finished)return;
+    if(this.destroyed||this.running||this.finished)return;
     if(this.active().length<2){this.finishTournament('last-player');return;}
     if(this.sessionRemaining()<=0){this.finishTournament('time');return;}
 
@@ -235,6 +252,7 @@ export class HoldemDemo {
 
     this.players.forEach(p=>{
       p.bet=0;p.totalBet=0;p.folded=p.out;p.allIn=false;p.lastAction='';p.hole=[];
+      p.handStartStack=p.stack;
     });
     this.assignPositions();
     this.event('HAND_STARTED',{button:this.button,players:this.players.map(p=>({seat:p.seat,nick:p.nick,position:p.position,stack:p.stack,out:p.out}))});
@@ -309,7 +327,7 @@ export class HoldemDemo {
     if(this.liveInHand().length<=1)return;
     let idx=startIndex,acted=new Set(),raiseRights=new Set(this.canAct().map(p=>p.seat)),guard=0;
 
-    while(guard++<300){
+    while(!this.destroyed&&guard++<300){
       const actionableNow=this.canAct();
       if(actionableNow.length===0||(actionableNow.length===1&&actionableNow[0].bet>=this.currentBet))break;
       const p=this.players[idx];
@@ -324,12 +342,19 @@ export class HoldemDemo {
         let action;
         if(p.nick===this.heroNick){
           action=await new Promise(resolve=>{
-            if(this.onHeroDecision)this.onHeroDecision(legal,resolve);
-            else resolve({type:legal.canCheck?'check':'call'});
+            if(this.destroyed){resolve({type:legal.canCheck?'check':'fold'});return}
+            if(this.onHeroDecision){
+              try{this.onHeroDecision(legal,resolve)}
+              catch(err){
+                console.error('[KATALY hero decision callback]',err);
+                resolve({type:legal.canCheck?'check':'fold'});
+              }
+            }else resolve({type:legal.canCheck?'check':'call'});
           });
         }else{
           action=await this.botAction(p,legal);
         }
+        if(this.destroyed)return;
 
         const decisionMs=Math.max(0,Date.now()-this.decisionStartedAt);
         const outcome=this.applyAction(p,action||{type:legal.canCheck?'check':'fold'},legal,{potBefore,decisionMs});
@@ -513,7 +538,13 @@ export class HoldemDemo {
   }
   showdown(){
     const contenders=this.liveInHand();
-    if(contenders.length===1)return[{amount:this.pot,winners:[contenders[0]],label:'Без вскрытия'}];
+    if(contenders.length===1){
+      const winner=contenders[0];
+      winner.stack+=this.pot;
+      const award={amount:this.pot,winners:[winner.nick],label:'Без вскрытия'};
+      this.event('POT_AWARDED',award);
+      return[award];
+    }
 
     contenders.forEach(p=>this.event('CARDS_REVEALED',{seat:p.seat,nick:p.nick,cards:p.hole.slice()}));
     const ranked=new Map();contenders.forEach(p=>ranked.set(p.nick,evaluate7(p.hole.concat(this.board))));
@@ -545,12 +576,16 @@ export class HoldemDemo {
     const awards=this.showdown(),winnerNames=[];
     awards.forEach(a=>a.winners.forEach(n=>{if(!winnerNames.includes(n))winnerNames.push(n)}));
     const newlyOut=[];
-    this.players.forEach(p=>{
-      if(p.stack<=0&&!p.out){
-        p.out=true;const place=this.active().length+1;
-        const e={nick:p.nick,place,handNo:this.handNo,ts:Date.now()};
-        this.eliminations.push(e);newlyOut.push(e);
-      }
+    const busted=this.players.filter(p=>p.stack<=0&&!p.out);
+    // При нескольких вылетах в одной руке большее количество фишек в начале руки
+    // получает более высокое место — стандартная турнирная логика.
+    busted.sort((a,b)=>(Number(b.handStartStack)||0)-(Number(a.handStartStack)||0));
+    const survivors=this.players.filter(p=>p.stack>0&&!p.out).length;
+    busted.forEach((p,i)=>{
+      p.out=true;
+      const place=survivors+1+i;
+      const e={nick:p.nick,place,handNo:this.handNo,ts:Date.now(),handStartStack:p.handStartStack||0};
+      this.eliminations.push(e);newlyOut.push(e);
     });
     const summary={
       handNo:this.handNo,pot:this.pot,winners:winnerNames,awards,board:this.board.slice(),
@@ -559,7 +594,11 @@ export class HoldemDemo {
     };
     this.sessionHands.push(summary);
     this.event('HAND_FINISHED',{summary});
-    this.emit();if(this.onHandEnd)this.onHandEnd(summary);
+    this.emit();
+    if(this.onHandEnd){
+      try{this.onHandEnd(summary)}
+      catch(err){console.error('[KATALY onHandEnd]',err)}
+    }
 
     const hero=this.hero();
     if(this.active().length<=1||(hero&&hero.out))this.finishTournament(hero&&hero.out?'hero-out':'last-player');
@@ -581,10 +620,10 @@ export class HoldemDemo {
       const order=this.players.slice().sort((a,b)=>b.stack-a.stack);
       heroPlace=Math.max(1,order.findIndex(p=>p.nick===this.heroNick)+1);
     }
-    if(this.onTournamentEnd)this.onTournamentEnd({
+    if(this.onTournamentEnd)try{this.onTournamentEnd({
       heroPlace,totalPlayers:this.players.length,winner:active.length===1?active[0].nick:null,
       eliminations:this.eliminations.slice().sort((a,b)=>a.place-b.place),
       handNo:this.handNo,level:this.level+1,sb:this.sb,bb:this.bb,ante:this.ante,reason:this.sessionEndReason,sessionSeconds:this.sessionSeconds,sessionElapsed:Math.min(this.sessionSeconds,Math.floor((Date.now()-this.sessionStartedAt)/1000))
-    });
+    })}catch(err){console.error('[KATALY onTournamentEnd]',err)}
   }
 }

@@ -1,6 +1,13 @@
 /* KATALY human pacing v3.0 — poker-natural decision rhythm */
-import { HoldemDemo } from './poker/engine.js?v=180';
+import { HoldemDemo } from './poker/engine.js?v=200';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function cancellableSleep(engine,ms){
+  let left=Math.max(0,ms);
+  while(left>0&&!engine.destroyed){
+    const chunk=Math.min(120,left);
+    await sleep(chunk);left-=chunk;
+  }
+}
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const rnd=(a,b)=>a+Math.random()*(b-a);
 
@@ -69,7 +76,8 @@ const original=HoldemDemo.prototype.botAction;
 HoldemDemo.prototype.botAction=async function(player,legal){
   const x=player.__humanThinkPlan||plan(this,player,legal);
   player.__humanThinkPlan=x;
-  await sleep(x.ms);
+  await cancellableSleep(this,x.ms);
+  if(this.destroyed)return{type:legal.canCheck?'check':'fold'};
   const old=this.botDelayMs;
   this.botDelayMs=0;
   try{return await original.call(this,player,legal)}

@@ -62,11 +62,8 @@ export class TableView{
           </div>
           <div id="v1Seats" class="v1-seats"></div>
           <div class="v1-live-hud" aria-label="Tournament status">
-            <div><span>LEFT</span><b id="v1Left">6/6</b></div>
-            <i></i>
-            <div><span>AVG STACK</span><b id="v1Avg">100 BB</b></div>
-            <i></i>
-            <div><span>YOU</span><b id="v1Rank">1/6</b></div>
+            <div class="v1-hud-line"><span>LEFT</span> <b id="v1Left">6/6</b> <em>·</em> <span>AVG STACK</span> <b id="v1Avg">100 BB</b> <em>·</em> <span>YOU</span> <b id="v1Rank">1/6</b></div>
+            <div class="v1-hud-sub" id="v1HudSub">Blinds · next level</div>
           </div>
           <div id="v1Banner" class="v1-banner"></div>
           <div id="v1HistoryDrawer" class="v1-history-drawer"><div class="v1-drawer-head"><b>ACTION HISTORY</b><button data-close-history>×</button></div><div id="v1ActionLog" class="v1-action-log"></div></div>
@@ -463,9 +460,16 @@ export class TableView{
       <div class="v1-main-actions">
         <button type="button" data-a="fold" class="fold">FOLD</button>
         <button type="button" data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button>
-        <button type="button" id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${verb} ${legal.canRaise?bb(selected/bbChips)+' BB':''}</button>
+        <button type="button" id="v1RaiseOpen" class="raise v1-drag-raise" ${legal.canRaise?'':'disabled'}>
+          <span>${verb} ${legal.canRaise?bb(selected/bbChips)+' BB':''}</span>
+          <i class="v1-drag-knob" aria-hidden="true">●</i>
+        </button>
       </div>
-      <div id="v1RaiseDrawer" class="v1-raise-drawer open">
+      <div id="v1RaiseBubble" class="v1-raise-bubble" aria-hidden="true">
+        <b id="v1BubbleSize">${bb(selected/bbChips)} BB</b>
+        <span>slide up/down</span>
+      </div>
+      <div id="v1RaiseDrawer" class="v1-raise-drawer">
         <div class="v1-presets">${presets}<button type="button" data-allin="1">ALL-IN</button></div>
         <div class="v1-size-line">
           <button type="button" data-step="-1">−</button>
@@ -541,14 +545,71 @@ export class TableView{
     });
 
     confirm.addEventListener('click',()=>onAction({type:'raise',amount:selected}));
-    open.addEventListener('click',()=>{
-      drawer.classList.add('open');
-      drawer.scrollIntoView({block:'nearest'});
-      // Не открываем клавиатуру автоматически на телефоне.
-      if(!window.matchMedia('(pointer:coarse)').matches){
-        entry.focus({preventScroll:true});
-        entry.select();
+    const bubble=c.querySelector('#v1RaiseBubble');
+    const bubbleSize=c.querySelector('#v1BubbleSize');
+    const knob=open.querySelector('.v1-drag-knob');
+    let drag=null, suppressClick=false;
+
+    const showBubble=()=>{
+      bubble.classList.add('show');
+      bubble.setAttribute('aria-hidden','false');
+      bubbleSize.textContent=`${bb(selected/bbChips)} BB`;
+    };
+    const hideBubble=()=>{
+      bubble.classList.remove('show');
+      bubble.setAttribute('aria-hidden','true');
+    };
+    const updateFromDrag=(clientY)=>{
+      if(!drag)return;
+      const dy=drag.startY-clientY; // вверх = больше
+      const travel=Math.max(120,Math.min(260,window.innerHeight*.28));
+      const ratio=Math.max(0,Math.min(1,drag.startRatio+dy/travel));
+      const value=min+(max-min)*ratio;
+      set(value);
+      bubbleSize.textContent=`${bb(selected/bbChips)} BB`;
+    };
+
+    open.addEventListener('pointerdown',e=>{
+      if(open.disabled)return;
+      open.setPointerCapture?.(e.pointerId);
+      drag={
+        id:e.pointerId,
+        startY:e.clientY,
+        startRatio:(selected-min)/Math.max(1,max-min),
+        moved:false
+      };
+      showBubble();
+    });
+    open.addEventListener('pointermove',e=>{
+      if(!drag||e.pointerId!==drag.id)return;
+      if(Math.abs(e.clientY-drag.startY)>5){
+        drag.moved=true;
+        suppressClick=true;
+        e.preventDefault();
+        updateFromDrag(e.clientY);
       }
+    });
+    const finishDrag=(e)=>{
+      if(!drag||e.pointerId!==drag.id)return;
+      const moved=drag.moved;
+      drag=null;
+      if(moved){
+        // Release commits the selected size, PokerOK-style.
+        hideBubble();
+        onAction({type:'raise',amount:selected});
+        setTimeout(()=>{suppressClick=false},250);
+      }else{
+        hideBubble();
+      }
+    };
+    open.addEventListener('pointerup',finishDrag);
+    open.addEventListener('pointercancel',e=>{drag=null;hideBubble();suppressClick=false});
+
+    open.addEventListener('click',e=>{
+      if(suppressClick){e.preventDefault();return}
+      // Simple tap still opens exact/manual controls as fallback.
+      drawer.classList.toggle('open');
+      if(drawer.classList.contains('open'))drawer.scrollIntoView({block:'nearest'});
     });
 
     set(selected);
