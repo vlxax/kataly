@@ -161,7 +161,7 @@ function openGameSetup(focusInvite=false){
   wrap.querySelector('#closeSheet').onclick=()=>wrap.remove();
   wrap.querySelector('#goLobby').onclick=()=>{
     
-    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});
+    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});lobby.sessionSeconds=600;
     wrap.remove(); openLobby(lobby);
   };
   if(focusInvite) setTimeout(()=>wrap.querySelector('#friendNick').focus(),100);
@@ -211,7 +211,7 @@ function openLobby(lobby){
           stackBB:lobby.stackBB,
           playerCount:lobby.players.length,
           status:'completed-demo',
-          hands:result.hands,
+          hands:result.hands,handsWon:result.handsWon||0,handsLost:result.handsLost||0,biggestPotBB:result.biggestPotBB||0,
           heroStackStart:result.stackStartBB!=null?result.stackStartBB:result.stackStart,
           heroStackEnd:result.stackEndBB!=null?result.stackEndBB:result.stackEnd,
           chipDelta,
@@ -242,12 +242,17 @@ function showSessionResult(session){
     <h2>${session.place===1?'Победа':session.place?`${session.place} место`:won?'Плюсовая катка':'Сессия завершена'}</h2>
     <div class="result-money ${won?'positive':'negative'}">${session.chipDelta>0?'+':''}${session.chipDelta} BB</div>
     <p>${session.hands} рук · ${session.seats}-max · NL Hold’em</p>
+    <div class="result-place"><b>${session.place||'—'} / ${session.playerCount}</b><span>ИТОГОВОЕ МЕСТО</span></div>
 
     <div class="result-grid">
       <div><span>Награда</span><b>${money(session.reward)}</b></div>
       <div><span>Бай-ин</span><b>${money(session.buyIn)}</b></div>
       <div><span>Старт</span><b>${session.heroStackStart} BB</b></div>
       <div><span>Финиш</span><b>${Math.round(session.heroStackEnd*10)/10} BB</b></div>
+      <div><span>Выиграно рук</span><b>${session.handsWon||0}</b></div>
+      <div><span>Проиграно рук</span><b>${session.handsLost||0}</b></div>
+      <div><span>Крупнейший банк</span><b>${Math.round((session.biggestPotBB||0)*10)/10} BB</b></div>
+      <div><span>Всего решений</span><b>${(session.actions||[]).filter(a=>a.player===state.nick).length}</b></div>
     </div>
 
     <div class="analysis-teaser">

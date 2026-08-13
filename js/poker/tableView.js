@@ -78,9 +78,7 @@ export class TableView{
           <div id="v1TurnStatus" class="v1-turn-status">РАЗДАЧА</div>
         </div>
 
-        <div id="v1Controls" class="v1-controls">
-          <div class="v1-waiting">Ждём раздачу</div>
-        </div>
+        <div id="v1Controls" class="v1-controls"></div>
       </div>`;
 
     const seatWrap=this.root.querySelector('#v1Seats');
@@ -110,11 +108,13 @@ export class TableView{
     });
     const ch=this.root.querySelector('[data-close-history]');if(ch)ch.onclick=()=>this.toggleHistory(false);
     const ct=this.root.querySelector('[data-close-tournament]');if(ct)ct.onclick=()=>this.toggleTournamentPanel(false);
+    this.setHeroControlsIdle('Ждём раздачу');
   }
 
   seatPos(i,n){
     const maps={
-      6:[[50,83],[15,69],[15,24],[50,10],[85,24],[85,69]]
+      6:[[50,83],[15,69],[15,24],[50,10],[85,24],[85,69]],
+      9:[[50,84],[24,78],[8,57],[12,25],[34,10],[66,10],[88,25],[92,57],[76,78]]
     };
     return (maps[n]||maps[6])[i]||[50,50];
   }
@@ -259,8 +259,14 @@ export class TableView{
   }
 
   dealBoardCard(e){
-    const node=cardNode(e.card,false);
-    this.animateCardTo(this.root.querySelector('#v1Board'),node);
+    const board=this.root.querySelector('#v1Board'),deck=this.root.querySelector('#v1Deck'),stage=this.root.querySelector('.v1-table-stage');
+    const node=cardNode(e.card,false);node.classList.add('board-land');
+    const sr=stage.getBoundingClientRect(),dr=deck.getBoundingClientRect(),br=board.getBoundingClientRect();
+    const ghost=node.cloneNode(true);ghost.classList.add('v1-flying-card','board-flight');
+    ghost.style.left=(dr.left-sr.left)+'px';ghost.style.top=(dr.top-sr.top)+'px';stage.appendChild(ghost);
+    const slot=board.children.length,targetX=br.left-sr.left+slot*53,targetY=br.top-sr.top;
+    requestAnimationFrame(()=>{ghost.style.transform=`translate(${targetX-(dr.left-sr.left)}px,${targetY-(dr.top-sr.top)}px) rotate(${slot%2?1.5:-1.5}deg) scale(1)`;ghost.style.opacity='1'});
+    setTimeout(()=>{ghost.remove();board.appendChild(node);requestAnimationFrame(()=>node.classList.add('landed'))},360);
   }
 
   revealCards(e){
@@ -334,52 +340,62 @@ export class TableView{
     banner.classList.add('show',result.heroPlace===1?'win':'');
   }
 
-  showWaiting(text='Ждём действия'){
-    this.root.querySelector('#v1Controls').innerHTML=`<div class="v1-waiting">${text}</div>`;
+  setBotThinking(seatIndex,plan={}){
+    const seat=this.seats.get(seatIndex);if(!seat)return;
+    seat.root.classList.add('thinking');
+    seat.action.textContent=plan.mode==='timebank'?'TIME BANK':'ДУМАЕТ';
+    seat.action.className='v1-action show thinking';
+  }
+
+  updateBotThinking(seatIndex,left){
+    const seat=this.seats.get(seatIndex);if(!seat)return;
+    const p=this.players[seatIndex];
+    seat.action.textContent=`${p&&p.nick?p.nick:'BOT'} · ${left}s`;
+  }
+
+  clearBotThinking(seatIndex){
+    const seat=this.seats.get(seatIndex);if(!seat)return;
+    seat.root.classList.remove('thinking');
+  }
+
+  showWaiting(text='Ждём действия'){ this.setHeroControlsIdle(text); }
+
+  setHeroControlsIdle(text='Ждём твоего хода'){
+    const c=this.root.querySelector('#v1Controls');if(!c)return;
+    c.innerHTML=`<div class="v1-context"><span>${text}</span><span>ПАНЕЛЬ HERO</span><span>BET / RAISE доступен в твой ход</span></div>
+      <div class="v1-main-actions idle-actions">
+        <button class="fold" disabled>FOLD</button><button class="call" disabled>CHECK / CALL</button><button class="raise" disabled>BET / RAISE</button>
+      </div>`;
   }
 
   renderHeroControls(legal,onAction,street='preflop',extras={}){
     const c=this.root.querySelector('#v1Controls');
-    const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise;
-    let selected=Math.min(max,Math.max(min,legal.currentBet||min));
-    const pre=street==='preflop';
+    const call=bb(legal.toCallBB),min=legal.minRaise,max=legal.maxRaise,step=Math.max(1,Math.round(legal.bb/2));
+    let selected=Math.max(min,Math.min(max,legal.currentBet?Math.round(legal.currentBet*2.5):Math.round(Math.max(legal.bb,legal.pot*.5))));
+    const pre=street==='preflop',verb=legal.currentBet?'RAISE':'BET';
     const presets=pre
-      ? `<button data-bb="2">2x</button><button data-bb="2.2">2.2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button>`
+      ? `<button data-bb="2">2x</button><button data-bb="2.5">2.5x</button><button data-bb="3">3x</button><button data-bb="4">4x</button>`
       : `<button data-p="0.25">25%</button><button data-p="0.33">33%</button><button data-p="0.50">50%</button><button data-p="0.66">66%</button><button data-p="1">POT</button>`;
-
     c.innerHTML=`
-      <div class="v1-context">
-        <span>POT ${bb(legal.potBB)} BB</span>
-        <span>${legal.canCheck?'CHECK':`TO CALL ${call} BB`}</span>
-        <span>STACK ${bb(legal.stackBB)} BB</span>
-        <button id="v1TimeBank" class="v1-timebank-btn" ${extras.timeBank>0?'':'disabled'}>TIME BANK +10s · ${extras.timeBank||0}s</button>
-      </div>
-      <div class="v1-main-actions">
-        <button data-a="fold" class="fold">FOLD</button>
-        <button data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button>
-        <button id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${legal.currentBet?'RAISE':'BET'}</button>
-      </div>
-      <div id="v1RaiseDrawer" class="v1-raise-drawer">
+      <div class="v1-context"><span>POT ${bb(legal.potBB)} BB</span><span>${legal.canCheck?'CHECK':`TO CALL ${call} BB`}</span><span>STACK ${bb(legal.stackBB)} BB</span><button id="v1TimeBank" class="v1-timebank-btn" ${extras.timeBank>0?'':'disabled'}>TIME BANK +10s · ${extras.timeBank||0}s</button></div>
+      <div class="v1-main-actions"><button data-a="fold" class="fold">FOLD</button><button data-a="${legal.canCheck?'check':'call'}" class="call">${legal.canCheck?'CHECK':`CALL ${call} BB`}</button><button id="v1RaiseOpen" class="raise" ${legal.canRaise?'':'disabled'}>${verb} ${legal.canRaise?bb(selected/legal.bb)+' BB':''}</button></div>
+      <div id="v1RaiseDrawer" class="v1-raise-drawer open">
         <div class="v1-presets">${presets}<button data-allin="1">ALL-IN</button></div>
-        <input id="v1Range" type="range" min="${min}" max="${max}" step="${Math.max(1,Math.round(legal.bb/10))}" value="${selected}">
-        <button id="v1RaiseConfirm" class="confirm">RAISE TO <b>${bb(selected/legal.bb)} BB</b></button>
+        <div class="v1-size-line"><button data-step="-1">−</button><input id="v1Range" type="range" min="${min}" max="${max}" step="${step}" value="${selected}"><button data-step="1">+</button></div>
+        <div class="v1-size-entry"><input id="v1SizeBB" inputmode="decimal" type="number" step="0.5" value="${bb(selected/legal.bb)}"><span>BB</span></div>
+        <button id="v1RaiseConfirm" class="confirm">${verb} TO <b>${bb(selected/legal.bb)} BB</b></button>
       </div>`;
-
     const tb=c.querySelector('#v1TimeBank');if(tb&&extras.onTimeBank)tb.onclick=()=>extras.onTimeBank();
     c.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>onAction({type:b.dataset.a}));
-    const drawer=c.querySelector('#v1RaiseDrawer'),range=c.querySelector('#v1Range'),confirm=c.querySelector('#v1RaiseConfirm');
-    const sync=()=>{selected=Number(range.value);confirm.innerHTML=`RAISE TO <b>${bb(selected/legal.bb)} BB</b>`};
-    c.querySelector('#v1RaiseOpen').onclick=()=>drawer.classList.toggle('open');
-    range.oninput=sync;
-    c.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{
-      selected=Math.max(min,Math.min(max,Math.round(legal.currentBet+legal.toCall+legal.pot*Number(b.dataset.p))));
-      range.value=selected;sync();
-    });
-    c.querySelectorAll('[data-bb]').forEach(b=>b.onclick=()=>{
-      selected=Math.max(min,Math.min(max,Math.round(legal.bb*Number(b.dataset.bb))));
-      range.value=selected;sync();
-    });
-    c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});
-    confirm.onclick=()=>onAction({type:'raise',amount:selected});
+    if(!legal.canRaise)return;
+    const drawer=c.querySelector('#v1RaiseDrawer'),range=c.querySelector('#v1Range'),entry=c.querySelector('#v1SizeBB'),confirm=c.querySelector('#v1RaiseConfirm'),open=c.querySelector('#v1RaiseOpen');
+    const set=x=>{selected=Math.max(min,Math.min(max,Math.round(Number(x)/step)*step));range.value=selected;entry.value=bb(selected/legal.bb);confirm.innerHTML=`${verb} TO <b>${bb(selected/legal.bb)} BB</b>`;open.textContent=`${verb} ${bb(selected/legal.bb)} BB`};
+    range.oninput=()=>set(range.value);entry.onchange=()=>set(Number(entry.value)*legal.bb);
+    c.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>set(selected+Number(b.dataset.step)*step));
+    c.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>set(legal.currentBet+legal.toCall+(legal.pot+legal.toCall)*Number(b.dataset.p)));
+    c.querySelectorAll('[data-bb]').forEach(b=>b.onclick=()=>set(legal.bb*Number(b.dataset.bb)));
+    c.querySelector('[data-allin]').onclick=()=>onAction({type:'allin'});confirm.onclick=()=>onAction({type:'raise',amount:selected});
+    open.onclick=()=>{drawer.classList.add('open');entry.focus();entry.select()};set(selected);
   }
+
 }

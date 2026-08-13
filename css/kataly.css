@@ -865,3 +865,22 @@ button{cursor:pointer}
 @media(max-width:390px){
   .v1-mini-icon{width:24px;height:24px}.v1-title{max-width:105px}.v1-live-hud>div{min-width:40px}.v1-live-hud{top:4px}
 }
+
+
+/* ===== KATALY DAY BUILD v2: persistent hero controls + real board landing ===== */
+.v1-controls{height:auto!important;min-height:128px;max-height:260px;overflow:visible!important}
+.v1-main-actions.idle-actions button{opacity:.48;filter:saturate(.45)}
+.v1-raise-drawer.open{display:block!important;background:rgba(8,10,13,.98);padding:7px;border-radius:11px;border:1px solid rgba(255,255,255,.08)}
+.v1-size-line{display:grid;grid-template-columns:34px minmax(120px,1fr) 34px;gap:6px;align-items:center}
+.v1-size-line>button{height:32px;border:1px solid #30343b;background:#171a20;color:#fff;border-radius:8px;font-size:18px}
+.v1-size-entry{display:grid;grid-template-columns:minmax(80px,1fr) 38px;gap:5px;margin-top:5px}
+.v1-size-entry input{height:34px;min-width:0;border:1px solid #343943;background:#101216;color:#fff;border-radius:8px;text-align:center;font-weight:900;font-size:14px}
+.v1-size-entry span{display:grid;place-items:center;border-radius:8px;background:#171a20;color:#aaa;font-size:9px;font-weight:900}
+.v1-seat.thinking .v1-avatar{box-shadow:0 0 0 2px #ffcf59,0 0 22px rgba(255,207,89,.28)!important}
+.v1-action.thinking{background:#2a2313!important;color:#ffd86d!important;border-color:#7c6221!important;white-space:nowrap}
+.v1-board{align-items:center;min-height:70px}
+.v1-board .v1-card.board-land{opacity:0;transform:translateY(-9px) rotate(-2deg) scale(.96);transition:opacity .16s ease,transform .24s cubic-bezier(.2,.9,.25,1.15)}
+.v1-board .v1-card.board-land.landed{opacity:1;transform:translateY(0) rotate(0) scale(1)}
+.v1-flying-card.board-flight{transition:transform .34s cubic-bezier(.18,.82,.2,1),opacity .18s ease!important;z-index:50!important}
+.result-place{margin:12px 0;padding:14px;border-radius:16px;background:#11141a;border:1px solid #2a2e36;text-align:center}.result-place b{display:block;font-size:32px}.result-place span{font-size:8px;color:#8f8992;letter-spacing:.14em;font-weight:900}
+@media(max-width:700px){.v1-controls{max-height:245px}.v1-presets{display:flex!important;overflow-x:auto}.v1-presets button{min-width:48px}.v1-table-stage{bottom:225px!important}.v1-hero-strip{bottom:168px!important}}

@@ -12,7 +12,7 @@ export class TableController{
     this.view=new TableView({root,players,heroNick});
     this.engine=new HoldemDemo({
       players,heroNick,stackBB:lobby.stackBB||100,smallBlind:50,bigBlind:100,levelSeconds:120,
-      bigBlindAnte:true,botDelayMs:320,eventPaceMs:100,
+      bigBlindAnte:true,botDelayMs:320,eventPaceMs:100,sessionSeconds:lobby.sessionSeconds||600,
       onChange:s=>{this.lastSnapshot=s;this.view.lastBB=s.bb;this.view.updateSnapshot(s)},
       onHeroDecision:(legal,resolve)=>this.onHeroDecision(legal,resolve),
       onHandEnd:h=>this.onHandEnd(h),
@@ -28,21 +28,21 @@ export class TableController{
     const on=(type,fn)=>this.engine.on(type,fn);
     on('HAND_STARTED',e=>{
       this.view.clearHand();
-      this.view.showWaiting('Раздаём карты…');
+      this.view.setHeroControlsIdle('Ждём твоего хода');
       this.view.logAction({kind:'street',text:`HAND #${e.handNo}`});
     });
     on('FORCED_BET',e=>{this.view.postForcedBet(e);this.view.logAction({street:e.street,nick:e.nick,text:`${e.label} ${this.toBB(e.amount)} BB`})});
     on('CARD_DEALT',e=>this.view.dealCard(e));
-    on('TURN_STARTED',e=>{this.startTurnTimer(e);this.view.setTurn(e);if(e.nick!==this.heroNick)this.view.showWaiting(`${e.nick} думает…`)});
+    on('TURN_STARTED',e=>{this.startTurnTimer(e);this.view.setTurn(e)});
     on('PLAYER_FOLDED',e=>{this.view.showPlayerAction('PLAYER_FOLDED',e);this.logPlayer(e,'FOLD')});
     on('PLAYER_CHECKED',e=>{this.view.showPlayerAction('PLAYER_CHECKED',e);this.logPlayer(e,'CHECK')});
     on('PLAYER_CALLED',e=>{this.view.showPlayerAction('PLAYER_CALLED',e);this.logPlayer(e,`CALL ${this.toBB(e.amount)} BB`)});
     on('PLAYER_RAISED',e=>{this.view.showPlayerAction('PLAYER_RAISED',e);this.logPlayer(e,`RAISE TO ${this.toBB(e.bet)} BB`)});
     on('PLAYER_ALLIN',e=>{this.view.showPlayerAction('PLAYER_ALLIN',e);this.logPlayer(e,`ALL-IN ${this.toBB(e.bet)} BB`)});
-    on('BETTING_ROUND_COMPLETE',async()=>{this.view.showWaiting('Собираем ставки…');await this.view.collectBets()});
-    on('STREET_STARTED',e=>{this.view.showWaiting(e.street.toUpperCase());this.view.logAction({kind:'street',text:e.street.toUpperCase()})});
+    on('BETTING_ROUND_COMPLETE',async()=>{await this.view.collectBets()});
+    on('STREET_STARTED',e=>{this.view.setHeroControlsIdle('Ждём твоего хода');this.view.logAction({kind:'street',text:e.street.toUpperCase()})});
     on('BOARD_CARD_DEALT',e=>this.view.dealBoardCard(e));
-    on('SHOWDOWN_STARTED',()=>{this.view.showWaiting('SHOWDOWN');this.view.logAction({kind:'street',text:'SHOWDOWN'})});
+    on('SHOWDOWN_STARTED',()=>{this.view.setHeroControlsIdle('SHOWDOWN');this.view.logAction({kind:'street',text:'SHOWDOWN'})});
     on('CARDS_REVEALED',e=>this.view.revealCards(e));
     on('POT_AWARDED',e=>{this.view.showPotAward(e);this.view.logAction({kind:'win',text:`${e.winners.join(', ')} +${this.toBB(e.amount)} BB · ${e.label||''}`})});
     on('HAND_FINISHED',e=>{
@@ -80,14 +80,15 @@ export class TableController{
     const seat=this.view.seats.get(e.seat);
     if(!seat)return;
     const hero=e.nick===this.heroNick;
-    const duration=hero?this.heroBaseSeconds:10;
+    let duration=this.heroBaseSeconds;
+    if(!hero){const p=this.engine.players[e.seat],legal=(()=>{try{return this.engine.legalFor(p,true)}catch(_){return{toCall:0,toCallBB:0,potBB:0}}})();const maker=window.__KATALY_PACE_PLAN__;const plan=maker?maker(this.engine,p,legal):{seconds:4,mode:'normal'};p.__humanThinkPlan=plan;duration=plan.seconds;this.view.setBotThinking(e.seat,plan);}
     this.heroDeadline=Date.now()+duration*1000;
     const total=duration;
     seat.ring.style.setProperty('--turn-progress','1');
     this.turnTimer=setInterval(()=>{
       const left=Math.max(0,(this.heroDeadline-Date.now())/1000);
       seat.ring.style.setProperty('--turn-progress',String(Math.max(0,left/total)));
-      if(hero)this.view.updateDecisionClock(Math.ceil(left),this.heroTimeBank);
+      if(hero)this.view.updateDecisionClock(Math.ceil(left),this.heroTimeBank);else this.view.updateBotThinking(e.seat,Math.ceil(left));
       if(left<=0){
         if(hero&&this.pendingResolve){
           if(this.heroTimeBank>0){
@@ -99,7 +100,7 @@ export class TableController{
           }
           this.submitHero({type:this.pendingLegal&&this.pendingLegal.canCheck?'check':'fold',timedOut:true});
         }
-        clearInterval(this.turnTimer);
+        clearInterval(this.turnTimer);if(!hero)this.view.clearBotThinking(e.seat);
       }
     },250);
   }
@@ -132,7 +133,7 @@ export class TableController{
     if(!this.pendingResolve)return;
     clearInterval(this.turnTimer);
     const r=this.pendingResolve;this.pendingResolve=null;this.pendingLegal=null;
-    this.view.showWaiting(action&&action.timedOut?'Время вышло · автоход':'Ход принят');
+    this.view.setHeroControlsIdle(action&&action.timedOut?'Время вышло · автоход':'Ход принят');
     r(action);
   }
 
@@ -140,7 +141,7 @@ export class TableController{
     this.lastHand=hand;
     setTimeout(()=>{
       if(!this.cancelled&&!this.engine.finished&&!this.engine.running)this.engine.startHand();
-    },3000);
+    },2200);
   }
 
   payoutFor(place){
@@ -154,7 +155,7 @@ export class TableController{
   }
 
   onTournamentEnd(result){
-    this.view.showWaiting(`Турнир завершён · ${result.heroPlace} место`);
+    this.view.setHeroControlsIdle(`Турнир завершён · ${result.heroPlace} место`);
     this.view.showTournamentEnd(result,this.payoutFor(result.heroPlace));
     if(this.sessionClosed)return;
     this.sessionClosed=true;
@@ -163,8 +164,10 @@ export class TableController{
     const handHistory=this.engine.sessionHands.slice();
     const actions=[];
     handHistory.forEach(h=>(h.actions||[]).forEach(a=>actions.push(a)));
+    const handsWon=handHistory.filter(h=>(h.winners||[]).includes(this.heroNick)).length;
+    const biggestPot=handHistory.reduce((m,h)=>Math.max(m,Number(h.pot)||0),0);
     const payload={
-      hands:handHistory.length,
+      hands:handHistory.length,handsWon,handsLost:Math.max(0,handHistory.length-handsWon),biggestPotBB:biggestPot/Math.max(1,this.engine.baseBB),
       stackStart:this.heroStart,
       stackEnd,
       stackStartBB:this.heroStart/this.engine.baseBB,

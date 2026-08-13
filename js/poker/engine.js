@@ -67,7 +67,7 @@ export class HoldemDemo {
   constructor({
     players,heroNick,stackBB=100,smallBlind=50,bigBlind=100,
     blindSchedule=null,levelSeconds=300,bigBlindAnte=true,
-    botDelayMs=700,eventPaceMs=180,onChange,onHeroDecision,onHandEnd,onTournamentEnd
+    botDelayMs=700,eventPaceMs=180,sessionSeconds=600,onChange,onHeroDecision,onHandEnd,onTournamentEnd
   }){
     this.heroNick=heroNick;
     this.baseSB=smallBlind;this.baseBB=bigBlind;
@@ -96,6 +96,7 @@ export class HoldemDemo {
     this.currentActorSeat=null;this.currentActorNick=null;
     this.deck=[];this.log=[];this.handActions=[];this.sessionHands=[];this.eliminations=[];this.decisionStartedAt=0;
     this.running=false;this.finished=false;
+    this.sessionSeconds=Math.max(60,Number(sessionSeconds)||600);this.sessionStartedAt=Date.now();this.sessionEndReason=null;
 
     this.onChange=onChange;this.onHeroDecision=onHeroDecision;
     this.onHandEnd=onHandEnd;this.onTournamentEnd=onTournamentEnd;
@@ -127,6 +128,7 @@ export class HoldemDemo {
       this.event('LEVEL_CHANGED',{level:this.level+1,sb:this.sb,bb:this.bb,ante:this.ante});
     }
   }
+  sessionRemaining(){return Math.max(0,this.sessionSeconds-Math.floor((Date.now()-this.sessionStartedAt)/1000))}
   levelRemaining(){
     const elapsed=Math.floor((Date.now()-this.levelStartedAt)/1000);
     return Math.max(0,this.levelSeconds-(elapsed%this.levelSeconds));
@@ -150,9 +152,9 @@ export class HoldemDemo {
     }
     const map={
       3:['BTN','SB','BB'],4:['BTN','SB','BB','CO'],5:['BTN','SB','BB','UTG','CO'],
-      6:['BTN','SB','BB','UTG','HJ','CO']
+      6:['BTN','SB','BB','UTG','HJ','CO'],7:['BTN','SB','BB','UTG','MP','HJ','CO'],8:['BTN','SB','BB','UTG','UTG+1','MP','HJ','CO'],9:['BTN','SB','BB','UTG','UTG+1','MP','LJ','HJ','CO']
     };
-    const labels=map[liveCount]||map[6];
+    const labels=map[liveCount]||map[9];
     let idx=this.button;
     for(const label of labels){
       this.players[idx].position=label;idx=this.nextLive(idx);
@@ -175,7 +177,7 @@ export class HoldemDemo {
       activePlayers:active.length,totalPlayers:this.players.length,averageStackBB:avg/this.bb,
       heroStackBB:(hero?hero.stack:0)/this.bb,heroRank:heroRank,
       currentActorSeat:this.currentActorSeat,currentActorNick:this.currentActorNick,
-      eliminations:this.eliminations.slice(),finished:this.finished
+      eliminations:this.eliminations.slice(),finished:this.finished,sessionRemaining:this.sessionRemaining(),sessionSeconds:this.sessionSeconds
     };
   }
   emit(){if(this.onChange)this.onChange(this.snapshot())}
@@ -223,7 +225,8 @@ export class HoldemDemo {
 
   async startHand(){
     if(this.running||this.finished)return;
-    if(this.active().length<2){this.finishTournament();return;}
+    if(this.active().length<2){this.finishTournament('last-player');return;}
+    if(this.sessionRemaining()<=0){this.finishTournament('time');return;}
 
     this.updateLevel();this.running=true;this.handNo++;
     this.deck=shuffle(createDeck());this.board=[];this.pot=0;this.streetPot=0;this.street='preflop';this.phase='dealing';
@@ -276,21 +279,21 @@ export class HoldemDemo {
     if(this.liveInHand().length>1){
       this.street='flop';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'flop'});
-      this.dealBoard(3);this.emit();await sleep(420);
+      for(let i=0;i<3;i++){this.dealBoard(1);this.emit();await sleep(i<2?320:520);}
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
       this.street='turn';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'turn'});
-      this.dealBoard(1);this.emit();await sleep(360);
+      await sleep(260);this.dealBoard(1);this.emit();await sleep(620);
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
       this.street='river';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'river'});
-      this.dealBoard(1);this.emit();await sleep(360);
+      await sleep(300);this.dealBoard(1);this.emit();await sleep(700);
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
@@ -559,22 +562,29 @@ export class HoldemDemo {
     this.emit();if(this.onHandEnd)this.onHandEnd(summary);
 
     const hero=this.hero();
-    if(this.active().length<=1||(hero&&hero.out))this.finishTournament();
+    if(this.active().length<=1||(hero&&hero.out))this.finishTournament(hero&&hero.out?'hero-out':'last-player');
+    else if(this.sessionRemaining()<=0)this.finishTournament('time');
   }
 
-  finishTournament(){
+  finishTournament(reason='complete'){
     if(this.finished)return;
+    this.sessionEndReason=reason;
     this.finished=true;this.destroy();
     const active=this.active();
     if(active.length===1&&!this.eliminations.some(e=>e.nick===active[0].nick)){
       this.eliminations.push({nick:active[0].nick,place:1,handNo:this.handNo,ts:Date.now()});
     }
     const heroResult=this.eliminations.find(e=>e.nick===this.heroNick);
-    const heroPlace=heroResult?heroResult.place:(active.length===1&&active[0].nick===this.heroNick?1:Math.max(1,active.length));
+    const hero=this.hero();
+    let heroPlace=heroResult?heroResult.place:null;
+    if(heroPlace==null){
+      const order=this.players.slice().sort((a,b)=>b.stack-a.stack);
+      heroPlace=Math.max(1,order.findIndex(p=>p.nick===this.heroNick)+1);
+    }
     if(this.onTournamentEnd)this.onTournamentEnd({
       heroPlace,totalPlayers:this.players.length,winner:active.length===1?active[0].nick:null,
       eliminations:this.eliminations.slice().sort((a,b)=>a.place-b.place),
-      handNo:this.handNo,level:this.level+1,sb:this.sb,bb:this.bb,ante:this.ante
+      handNo:this.handNo,level:this.level+1,sb:this.sb,bb:this.bb,ante:this.ante,reason:this.sessionEndReason,sessionSeconds:this.sessionSeconds,sessionElapsed:Math.min(this.sessionSeconds,Math.floor((Date.now()-this.sessionStartedAt)/1000))
     });
   }
 }
