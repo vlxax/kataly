@@ -233,7 +233,7 @@ export class TableView{
   setTurn(e){
     this.seats.forEach(s=>{
       s.ring.classList.remove('show');
-      s.root.classList.remove('hero-turn','bot-turn');
+      s.root.classList.remove('hero-turn','bot-turn','thinking');
     });
     const seat=this.seats.get(e.seat);
     const hero=e.nick===this.heroNick;
@@ -355,9 +355,10 @@ export class TableView{
 
   setBotThinking(seatIndex,plan={}){
     const seat=this.seats.get(seatIndex);if(!seat)return;
-    // У бота только один индикатор мышления: жёлтый круг вокруг аватара.
-    // Никаких вторых жёлтых/розовых плашек и текста «думает» на панели Hero.
-    seat.root.classList.add('thinking','bot-turn');
+    // Один-единственный индикатор: жёлтое свечение КРУГА АВАТАРА.
+    // Отдельный progress-ring поверх карт для ботов не используется.
+    seat.root.classList.remove('thinking');
+    seat.root.classList.add('bot-turn');
     seat.action.textContent='';
     seat.action.className='v1-action';
   }
@@ -369,6 +370,7 @@ export class TableView{
   clearBotThinking(seatIndex){
     const seat=this.seats.get(seatIndex);if(!seat)return;
     seat.root.classList.remove('thinking','bot-turn');
+    seat.ring.classList.remove('show');
     seat.action.textContent='';
     seat.action.className='v1-action';
   }

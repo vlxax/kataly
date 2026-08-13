@@ -1,0 +1,10 @@
+KATALY v4 BUGFIX
+- Исправлен главный mobile regression v3: .v1-controls больше не position:relative.
+  Hero action panel снова закреплена ВНИЗУ игрового экрана.
+- Hero cards strip снова закреплён прямо над action panel.
+- У думающего бота теперь РОВНО ОДИН жёлтый круг: glow вокруг аватара.
+  Второй progress-ring поверх карманных карт отключён.
+- Старый класс thinking очищается при смене хода, чтобы индикаторы не накапливались.
+- Никакого текста о мышлении бота в Hero action panel.
+- Raise sizing остаётся кликабельным и раскрывается вверх от нижней панели.
+- Добавлен cache bust v160 для GitHub Pages/Telegram browser.

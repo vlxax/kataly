@@ -915,3 +915,137 @@ button{cursor:pointer}
 .v1-controls{position:relative;z-index:80}
 .v1-main-actions button,.v1-presets button,.v1-size-line button,.v1-size-entry input,.v1-raise-drawer input{position:relative;z-index:82}
 .v1-main-actions button:disabled{pointer-events:none}
+
+
+/* =====================================================================
+   KATALY v4 BUGFIX — MOBILE LAYOUT + SINGLE BOT THINKING INDICATOR
+   Этот блок должен оставаться ПОСЛЕДНИМ в CSS.
+   ===================================================================== */
+
+/* Критический фикс v3: position:relative отправлял Hero-панель наверх документа.
+   Панель снова привязана к низу игрового shell на desktop/iPhone/Telegram browser. */
+.v1-shell{
+  position:relative!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  overflow:hidden!important;
+}
+.v1-controls{
+  position:absolute!important;
+  left:10px!important;
+  right:10px!important;
+  top:auto!important;
+  bottom:calc(8px + env(safe-area-inset-bottom))!important;
+  width:auto!important;
+  margin:0!important;
+  z-index:80!important;
+  height:auto!important;
+  min-height:118px!important;
+  max-height:min(42dvh,310px)!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  pointer-events:auto!important;
+}
+.v1-controls *{pointer-events:auto}
+.v1-main-actions button:disabled{pointer-events:none}
+
+/* Hero cards всегда непосредственно НАД кнопками, а не под/над случайным flow-блоком. */
+.v1-hero-strip{
+  position:absolute!important;
+  left:10px!important;
+  right:10px!important;
+  top:auto!important;
+  bottom:calc(134px + env(safe-area-inset-bottom))!important;
+  z-index:70!important;
+}
+
+/* Во время открытого sizing drawer панель растёт вверх от нижней кромки.
+   Не меняем её anchor и не даём ей уехать наверх страницы. */
+.v1-raise-drawer.open{
+  position:relative!important;
+  display:block!important;
+  max-height:190px!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+}
+.v1-presets{
+  display:flex!important;
+  gap:5px!important;
+  overflow-x:auto!important;
+  scrollbar-width:none;
+}
+.v1-presets::-webkit-scrollbar{display:none}
+.v1-presets button{flex:0 0 auto!important;min-width:48px!important}
+
+/* BOT: ровно ОДИН жёлтый индикатор — круг самого аватара.
+   Отдельный .v1-ring у бота скрыт полностью, поэтому больше нет двух жёлтых колец
+   (одно вокруг карт + второе вокруг лица). */
+.v1-seat.bot-turn .v1-ring,
+.v1-seat.bot-turn .v1-ring.show,
+.v1-seat.thinking .v1-ring,
+.v1-seat.thinking .v1-ring.show{
+  display:none!important;
+  background:none!important;
+  border:0!important;
+  -webkit-mask:none!important;
+  mask:none!important;
+}
+.v1-seat.bot-turn .v1-avatar{
+  box-shadow:
+    0 0 0 3px #ffd35e,
+    0 0 16px rgba(255,211,94,.42)!important;
+}
+.v1-seat.bot-turn .v1-playerbox{
+  border-color:#2b3038!important;
+  box-shadow:0 7px 18px #0007!important;
+}
+/* Любой старый SC-класс thinking без bot-turn не должен рисовать ничего. */
+.v1-seat.thinking:not(.bot-turn) .v1-avatar{box-shadow:none!important}
+
+/* HERO: отдельный розовый turn-progress оставляем только для твоего хода. */
+.v1-seat.hero-turn .v1-ring.show{
+  display:block!important;
+  background:conic-gradient(#ff2e7d calc(var(--turn-progress,1)*360deg),#33232b 0)!important;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0)!important;
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 0)!important;
+}
+.v1-seat.hero-turn .v1-avatar{
+  box-shadow:0 0 0 2px rgba(255,46,125,.34),0 0 15px rgba(255,46,125,.24)!important;
+}
+
+/* У ботов никакого текста "думает" в Hero-панели. */
+.v1-turn-status.bot-hidden,.v1-decision-clock.bot-hidden{display:none!important}
+
+/* iPhone / Telegram in-app browser: учитываем реальную короткую viewport-высоту. */
+@media (max-width:520px){
+  .v1-controls{
+    left:8px!important;
+    right:8px!important;
+    bottom:calc(6px + env(safe-area-inset-bottom))!important;
+    min-height:112px!important;
+    max-height:min(40dvh,286px)!important;
+    padding:7px!important;
+    border-radius:15px!important;
+  }
+  .v1-hero-strip{
+    left:8px!important;
+    right:8px!important;
+    bottom:calc(128px + env(safe-area-inset-bottom))!important;
+  }
+  .v1-main-actions{gap:6px!important}
+  .v1-main-actions button{height:48px!important}
+}
+@media (max-height:740px){
+  .v1-controls{
+    max-height:38dvh!important;
+    min-height:104px!important;
+  }
+  .v1-hero-strip{
+    bottom:calc(120px + env(safe-area-inset-bottom))!important;
+  }
+  .v1-table-stage{
+    bottom:190px!important;
+  }
+}

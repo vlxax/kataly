@@ -1,5 +1,5 @@
-import { HoldemDemo } from './engine.js?v=150';
-import { TableView } from './tableView.js?v=150';
+import { HoldemDemo } from './engine.js?v=160';
+import { TableView } from './tableView.js?v=160';
 import { analyzeSession } from '../analytics/sessionAnalysis.js?v=130';
 
 export class TableController{
