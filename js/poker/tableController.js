@@ -153,7 +153,7 @@ export class TableController{
 
   payoutFor(place){
     const seats=(this.lobby.players&&this.lobby.players.length)||this.lobby.seats||6;
-    const pool=(Number(this.lobby.buyIn)||0)*seats;
+    const pool=(Number(this.lobby.buyIn)||0)*seats*(this.lobby.mode==='bounty'?.7:1);
     let pct=0;
     if(seats>=6)pct=place===1?.50:place===2?.30:place===3?.20:0;
     else if(seats>=4)pct=place===1?.65:place===2?.35:0;
@@ -173,6 +173,8 @@ export class TableController{
     handHistory.forEach(h=>(h.actions||[]).forEach(a=>actions.push(a)));
     const handsWon=handHistory.filter(h=>(h.winners||[]).includes(this.heroNick)).length;
     const biggestPot=handHistory.reduce((m,h)=>Math.max(m,Number(h.pot)||0),0);
+    const heroKnockouts=this.engine.eliminations.filter(e=>e.eliminatedBy===this.heroNick).length;
+    const bountyEach=this.lobby.mode==='bounty'?Math.round((Number(this.lobby.buyIn)||0)*.3):0;
     const payload={
       hands:handHistory.length,handsWon,handsLost:Math.max(0,handHistory.length-handsWon),biggestPotBB:biggestPot/Math.max(1,this.engine.baseBB),
       stackStart:this.heroStart,
@@ -183,7 +185,7 @@ export class TableController{
       lastHand:this.lastHand,
       handHistory,
       actions,
-      tournament:{...result,prize:this.payoutFor(result.heroPlace)}
+      tournament:{...result,mode:this.lobby.mode||'regular',prize:this.payoutFor(result.heroPlace),heroKnockouts,bountyEach,bountyPrize:heroKnockouts*bountyEach}
     };
     // Для Hero турнир заканчивается сразу в момент вылета: не заставляем
     // смотреть дальнейший стол. Даём только короткий кадр завершения руки.

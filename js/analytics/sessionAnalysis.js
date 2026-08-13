@@ -44,14 +44,17 @@ export function analyzeSession({hands=[],heroNick}){
   const overall=avg(tagged)||0;
 
   const pf=byStreet.preflop;
-  const voluntary=pf.filter(a=>['call','raise'].includes(a.action)).length;
-  const raises=pf.filter(a=>a.action==='raise').length;
-  const threeBets=pf.filter(a=>a.action==='raise' && a.currentBetBB>=4).length;
+  const handGroups=new Map();
+  pf.forEach(a=>{if(!handGroups.has(a.handNo))handGroups.set(a.handNo,[]);handGroups.get(a.handNo).push(a)});
+  const pfHands=[...handGroups.values()];
+  const voluntary=pfHands.filter(xs=>xs.some(a=>['call','raise','allin'].includes(a.action))).length;
+  const raises=pfHands.filter(xs=>xs.some(a=>a.action==='raise'||a.action==='allin')).length;
+  const threeBets=pfHands.filter(xs=>xs.some(a=>(a.action==='raise'||a.action==='allin')&&a.currentBetBB>1)).length;
   const stats={
     decisions:tagged.length,
-    vpip:pf.length?Math.round(voluntary/pf.length*100):0,
-    pfr:pf.length?Math.round(raises/pf.length*100):0,
-    threeBet:pf.length?Math.round(threeBets/pf.length*100):0
+    vpip:pfHands.length?Math.round(voluntary/pfHands.length*100):0,
+    pfr:pfHands.length?Math.round(raises/pfHands.length*100):0,
+    threeBet:pfHands.length?Math.round(threeBets/pfHands.length*100):0
   };
 
   const leaks=[];

@@ -67,7 +67,8 @@ export class HoldemDemo {
   constructor({
     players,heroNick,stackBB=100,smallBlind=50,bigBlind=100,
     blindSchedule=null,levelSeconds=300,bigBlindAnte=true,
-    botDelayMs=700,eventPaceMs=180,sessionSeconds=600,onChange,onHeroDecision,onHandEnd,onTournamentEnd
+    botDelayMs=700,eventPaceMs=180,dealPaceMs=90,boardPaceMs=320,sessionSeconds=600,testMode=false,
+    onChange,onHeroDecision,onHandEnd,onTournamentEnd
   }){
     this.heroNick=heroNick;
     this.baseSB=smallBlind;this.baseBB=bigBlind;
@@ -75,6 +76,9 @@ export class HoldemDemo {
     this.bigBlindAnte=!!bigBlindAnte;
     this.botDelayMs=botDelayMs;
     this.eventPaceMs=eventPaceMs;
+    this.dealPaceMs=dealPaceMs;
+    this.boardPaceMs=boardPaceMs;
+    this.testMode=!!testMode;
     this.bus=new PokerEventBus();
 
     const startingStack=Math.round(stackBB*bigBlind);
@@ -124,6 +128,15 @@ export class HoldemDemo {
     this.currentActorSeat=null;this.currentActorNick=null;
     this.bus.clear();
   }
+  async pause(ms){
+    if(this.testMode||ms<=0)return !this.destroyed;
+    let left=ms;
+    while(left>0&&!this.destroyed){
+      const chunk=Math.min(50,left);
+      await sleep(chunk);left-=chunk;
+    }
+    return !this.destroyed;
+  }
   hero(){return this.players.find(p=>p.nick===this.heroNick)}
   active(){return this.players.filter(p=>!p.out&&p.stack>0)}
   liveInHand(){return this.players.filter(p=>!p.out&&!p.folded)}
@@ -149,6 +162,13 @@ export class HoldemDemo {
     for(let n=1;n<=this.players.length;n++){
       const i=(from+n)%this.players.length,p=this.players[i];
       if(!p.out&&p.stack>0)return i;
+    }
+    return from;
+  }
+  nextInHand(from){
+    for(let n=1;n<=this.players.length;n++){
+      const i=(from+n)%this.players.length,p=this.players[i];
+      if(!p.out&&!p.folded)return i;
     }
     return from;
   }
@@ -264,59 +284,62 @@ export class HoldemDemo {
 
     if(this.bigBlindAnte&&this.ante>0){
       this.postDead(this.players[bbIndex],this.ante,'BBA');
-      await sleep(this.eventPaceMs);
+      if(!await this.pause(this.eventPaceMs))return;
     }
     this.take(this.players[sbIndex],this.sb,'SB');
     this.event('FORCED_BET',{seat:sbIndex,nick:this.players[sbIndex].nick,label:'SB',amount:this.sb,stack:this.players[sbIndex].stack,pot:this.pot});
-    this.emit();await sleep(this.eventPaceMs);
+    this.emit();if(!await this.pause(this.eventPaceMs))return;
 
     this.take(this.players[bbIndex],this.bb,'BB');
     this.event('FORCED_BET',{seat:bbIndex,nick:this.players[bbIndex].nick,label:'BB',amount:this.bb,stack:this.players[bbIndex].stack,pot:this.pot});
     this.currentBet=Math.max(this.players[sbIndex].bet,this.players[bbIndex].bet);
-    this.emit();await sleep(this.eventPaceMs);
+    this.emit();if(!await this.pause(this.eventPaceMs))return;
 
     // true dealing order: one card around the table, then second round
-    let start=this.nextLive(this.button);
+    // The blind/ante can reduce a player's stack to zero. That player is still
+    // in this hand and must receive two cards, even though they can no longer act.
+    const handSeats=this.players.filter(p=>!p.out&&!p.folded).map(p=>p.seat);
+    let start=this.nextInHand(this.button);
     for(let round=0;round<2;round++){
       let cursor=start;
-      for(let n=0;n<live.length;n++){
+      for(let n=0;n<handSeats.length;n++){
         const p=this.players[cursor];
         const card=this.deck.pop();p.hole.push(card);
         this.event('CARD_DEALT',{seat:p.seat,nick:p.nick,round,card:p.nick===this.heroNick?card:'XX'});
         this.emit();
-        await sleep(90);
-        cursor=this.nextLive(cursor);
+        if(!await this.pause(this.dealPaceMs))return;
+        cursor=this.nextInHand(cursor);
       }
     }
 
     this.phase='action';this.emit();
-    await sleep(320);
+    if(!await this.pause(this.boardPaceMs))return;
     const preflopStart=live.length===2?sbIndex:this.nextLive(bbIndex);
     await this.bettingRound(preflopStart);
 
     if(this.liveInHand().length>1){
       this.street='flop';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'flop'});
-      for(let i=0;i<3;i++){this.dealBoard(1);this.emit();await sleep(i<2?320:520);}
+      for(let i=0;i<3;i++){this.dealBoard(1);this.emit();if(!await this.pause(i<2?this.boardPaceMs:this.boardPaceMs+200))return;}
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
       this.street='turn';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'turn'});
-      await sleep(260);this.dealBoard(1);this.emit();await sleep(620);
+      if(!await this.pause(this.boardPaceMs))return;this.dealBoard(1);this.emit();if(!await this.pause(this.boardPaceMs+300))return;
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
     if(this.liveInHand().length>1){
       this.street='river';this.phase='board';this.resetStreet();this.burn();
       this.event('STREET_STARTED',{street:'river'});
-      await sleep(300);this.dealBoard(1);this.emit();await sleep(700);
+      if(!await this.pause(this.boardPaceMs))return;this.dealBoard(1);this.emit();if(!await this.pause(this.boardPaceMs+380))return;
       this.phase='action';this.emit();
       await this.bettingRound(this.firstPostflopActor());
     }
 
-    this.phase='showdown';this.event('SHOWDOWN_STARTED',{});this.emit();await sleep(350);
+    this.phase='showdown';this.event('SHOWDOWN_STARTED',{});this.emit();if(!await this.pause(this.boardPaceMs))return;
     this.finishHand();
 
     if(!this.finished)this.button=this.nextLive(this.button);
@@ -365,7 +388,7 @@ export class HoldemDemo {
         }else acted.add(p.seat);
 
         this.emit();
-        await sleep(this.eventPaceMs);
+        if(!await this.pause(this.eventPaceMs))return;
       }
 
       if(this.liveInHand().length<=1)break;
@@ -408,7 +431,8 @@ export class HoldemDemo {
       if(!legal.canRaise)throw new Error('ILLEGAL_RAISE');
       const requested=Math.round(Number(action.amount));
       if(!Number.isFinite(requested))throw new Error('INVALID_RAISE_AMOUNT');
-      const target=Math.max(legal.minRaise,Math.min(legal.maxRaise,requested));
+      if(requested<legal.minRaise||requested>legal.maxRaise)throw new Error('RAISE_OUT_OF_RANGE');
+      const target=requested;
       const old=this.currentBet;
       amount=this.take(player,target-player.bet,'RAISE');
       if(player.bet>old){
@@ -478,7 +502,7 @@ export class HoldemDemo {
   }
 
   async botAction(player,legal){
-    await sleep(this.botDelayMs+Math.random()*this.botDelayMs*.45);
+    if(!await this.pause(this.botDelayMs+Math.random()*this.botDelayMs*.45))return{type:legal.canCheck?'check':'fold'};
     const profile=this.styleProfile(player),pos=this.positionFactor(player.position);
     const pressure=legal.toCall/Math.max(1,legal.pot+legal.toCall);
     let strength,draw=false;
@@ -532,7 +556,7 @@ export class HoldemDemo {
       const size=(level-prev)*participants.length;prev=level;
       if(size<=0)continue;
       const eligible=participants.map(x=>x.player).filter(p=>contenders.includes(p));
-      if(eligible.length)pots.push({size,eligible});
+      pots.push({size,eligible,participants:participants.map(x=>x.player),slice:level-prev});
     }
     return pots;
   }
@@ -548,9 +572,15 @@ export class HoldemDemo {
 
     contenders.forEach(p=>this.event('CARDS_REVEALED',{seat:p.seat,nick:p.nick,cards:p.hole.slice()}));
     const ranked=new Map();contenders.forEach(p=>ranked.set(p.nick,evaluate7(p.hole.concat(this.board))));
-    const pots=this.buildSidePots(contenders);const list=pots.length?pots:[{size:this.pot,eligible:contenders}];
+    const pots=this.buildSidePots(contenders);const list=pots.length?pots:[{size:this.pot,eligible:contenders,participants:contenders,slice:0}];
     const awards=[];
     for(const pot of list){
+      // A contribution layer with no live contender is an unmatched wager.
+      // Return it instead of silently deleting chips from the tournament.
+      if(!pot.eligible.length){
+        for(const p of pot.participants){p.stack+=pot.slice;this.event('UNCALLED_BET_RETURNED',{seat:p.seat,nick:p.nick,amount:pot.slice});}
+        continue;
+      }
       let best=null,winners=[];
       for(const p of pot.eligible){
         const r=ranked.get(p.nick);
@@ -584,7 +614,8 @@ export class HoldemDemo {
     busted.forEach((p,i)=>{
       p.out=true;
       const place=survivors+1+i;
-      const e={nick:p.nick,place,handNo:this.handNo,ts:Date.now(),handStartStack:p.handStartStack||0};
+      const eliminatedBy=winnerNames.length===1?winnerNames[0]:null;
+      const e={nick:p.nick,place,handNo:this.handNo,ts:Date.now(),handStartStack:p.handStartStack||0,eliminatedBy};
       this.eliminations.push(e);newlyOut.push(e);
     });
     const summary={

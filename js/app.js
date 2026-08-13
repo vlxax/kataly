@@ -20,6 +20,7 @@ state.wallet = 999999999;
 saveState(); // force dev bankroll on every load // engine testing: buy-ins do not block table entry
 
 function money(n){ return new Intl.NumberFormat('ru-RU').format(n) + ' 🪙'; }
+function cleanNick(value){return String(value||'').trim().replace(/[^\p{L}\p{N}_\-. ]/gu,'').slice(0,24)}
 function toast(text){
   { const oldToast=document.querySelector('.toast'); if(oldToast) oldToast.remove(); }
   const el=document.createElement('div'); el.className='toast'; el.textContent=text;
@@ -110,6 +111,14 @@ function openGameSetup(focusInvite=false){
       </div>
     </div>
 
+    <div class="field"><label>ТИП ТУРНИРА</label>
+      <div class="segmented tournament-types">
+        <button class="seg active" data-mode="regular">ОБЫЧНЫЙ</button>
+        <button class="seg" data-mode="bounty">BOUNTY</button>
+      </div>
+      <div class="hint">BOUNTY: часть фонда выплачивается за каждого выбитого соперника.</div>
+    </div>
+
     <div class="game-meta">
       <div><span>Стек</span><b>100 BB</b></div>
       <div><span>Блайнды</span><b>50 / 100</b></div>
@@ -130,7 +139,7 @@ function openGameSetup(focusInvite=false){
   </div>`;
   document.body.appendChild(wrap);
 
-  let seats=6,buyIn=1000;
+  let seats=6,buyIn=1000,mode='regular';
   const friends=[];
   const seatList=wrap.querySelector('#seatList');
   const renderSeats=()=>{
@@ -150,9 +159,13 @@ function openGameSetup(focusInvite=false){
   wrap.querySelectorAll('[data-buyin]').forEach(b=>b.onclick=()=>{
     wrap.querySelectorAll('[data-buyin]').forEach(x=>x.classList.remove('active')); b.classList.add('active'); buyIn=+b.dataset.buyin;
   });
+  wrap.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{
+    wrap.querySelectorAll('[data-mode]').forEach(x=>x.classList.remove('active'));b.classList.add('active');mode=b.dataset.mode;
+  });
   wrap.querySelector('#addFriend').onclick=()=>{
-    const input=wrap.querySelector('#friendNick'); const nick=input.value.trim();
+    const input=wrap.querySelector('#friendNick'); const nick=cleanNick(input.value);
     if(!nick) return toast('Введи ник друга');
+    if(nick.toLowerCase()===String(state.nick).toLowerCase())return toast('Это твой ник');
     if(friends.length>=seats-1) return toast('Стол уже заполнен');
     if(friends.some(x=>x.toLowerCase()===nick.toLowerCase())) return toast('Он уже приглашён');
     friends.push(nick); input.value='';
@@ -161,7 +174,7 @@ function openGameSetup(focusInvite=false){
   wrap.querySelector('#closeSheet').onclick=()=>wrap.remove();
   wrap.querySelector('#goLobby').onclick=()=>{
     
-    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});lobby.sessionSeconds=600;
+    const lobby=createLobby({host:state.nick,seats,format:'NL Hold’em',buyIn,stackBB:100,realPlayers:[state.nick,...friends]});lobby.sessionSeconds=600;lobby.mode=mode;
     wrap.remove(); openLobby(lobby);
   };
   if(focusInvite) setTimeout(()=>wrap.querySelector('#friendNick').focus(),100);
@@ -174,7 +187,7 @@ function openLobby(lobby){
   const wrap=document.createElement('div'); wrap.className='modal-backdrop';
   wrap.innerHTML=`<div class="sheet lobby-final">
     <div class="sheet-handle"></div>
-    <div class="lobby-title"><div><div class="eyebrow">ЛОББИ · ${lobby.seats}-MAX</div><h2>Стол готов</h2></div><div class="live-dot">● READY</div></div>
+    <div class="lobby-title"><div><div class="eyebrow">ЛОББИ · ${lobby.seats}-MAX · ${lobby.mode==='bounty'?'BOUNTY':'ОБЫЧНЫЙ'}</div><h2>Стол готов</h2></div><div class="live-dot">● READY</div></div>
     <div class="prize-card"><span>ПРИЗОВОЙ ФОНД</span><b>${money(prize)}</b><small>бай-ин ${money(lobby.buyIn)} · стек ${lobby.stackBB} BB</small></div>
     <div class="poker-table-mini">
       ${lobby.players.map((p,i)=>`<div class="mini-seat seat-${i+1}"><div class="avatar small ${p.type==='bot'?'bot-avatar':''}">${p.nick.slice(0,2).toUpperCase()}</div><b>${p.nick}</b><span>${p.type==='real'?'REAL':'BOT'}</span></div>`).join('')}
@@ -199,7 +212,7 @@ function openLobby(lobby){
       onExit: ()=>render(),
       onSessionEnd: (result)=>{
         const chipDelta = Math.round((result.chipDeltaBB!=null?result.chipDeltaBB:((result.stackEnd-result.stackStart)/100))*10)/10;
-        const reward = (result.tournament && result.tournament.prize) || 0;
+        const reward = ((result.tournament && result.tournament.prize) || 0)+((result.tournament && result.tournament.bountyPrize) || 0);
         if(!DEV_FREE_PLAY) state.wallet += reward;
 
         const session={
@@ -218,6 +231,7 @@ function openLobby(lobby){
           reward,
           place:(result.tournament && result.tournament.heroPlace) || null,
           tournament:result.tournament||null,
+          mode:lobby.mode||'regular',
           lastHand:result.lastHand,
           handHistory:result.handHistory||[],
           actions:result.actions||[]
@@ -252,6 +266,8 @@ function showSessionResult(session){
       <div><span>Выиграно рук</span><b>${session.handsWon||0}</b></div>
       <div><span>Проиграно рук</span><b>${session.handsLost||0}</b></div>
       <div><span>Крупнейший банк</span><b>${Math.round((session.biggestPotBB||0)*10)/10} BB</b></div>
+      <div><span>Выбито игроков</span><b>${session.tournament&&session.tournament.heroKnockouts||0}</b></div>
+      <div><span>Bounty</span><b>${money(session.tournament&&session.tournament.bountyPrize||0)}</b></div>
       <div><span>Всего решений</span><b>${(session.actions||[]).filter(a=>a.player===state.nick).length}</b></div>
     </div>
 

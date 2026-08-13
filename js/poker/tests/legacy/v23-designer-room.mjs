@@ -1,0 +1,20 @@
+
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {HoldemDemo} from '../engine.js';
+const engine=fs.readFileSync(new URL('../engine.js',import.meta.url),'utf8');
+const view=fs.readFileSync(new URL('../tableView.js',import.meta.url),'utf8');
+const css=fs.readFileSync(new URL('../../../css/kataly.css',import.meta.url),'utf8');
+assert.ok(view.includes('v1SessionInfo'));
+assert.ok(view.includes('v1-pos-badge'));
+assert.ok(view.includes('POSITION ${hero.position'));
+assert.ok(engine.includes('preflopContext(player)'));
+assert.ok(engine.includes('shortStackShoveRange'));
+assert.ok(engine.includes('vsThreeBetRange'));
+assert.ok(css.includes('V2.3 DESIGNER ROOM PASS'));
+const players=['Hero','A','B','C','D','E'].map(nick=>({nick,type:'bot'}));
+const g=new HoldemDemo({players,heroNick:'Nobody',stackBB:100,botDelayMs:0,eventPaceMs:0,levelSeconds:99999});
+assert.equal(g.inRange('AA',g.shortStackShoveRange(10,'BTN')),true);
+assert.equal(g.inRange('72o',g.shortStackShoveRange(10,'BTN')),false);
+g.destroy();
+console.log('V23_DESIGNER_ROOM_OK');

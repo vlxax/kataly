@@ -1,0 +1,4 @@
+KATALY REWORK V1
+Build date: 2026-08-14
+Scope: stable local tournament vertical slice
+Assets: preserved from supplied archive

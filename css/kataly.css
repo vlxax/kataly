@@ -1535,3 +1535,28 @@ button{cursor:pointer}
     bottom:72px!important;
   }
 }
+/* KATALY REWORK V1 — final responsive contract.
+   Original table/cards/portraits remain unchanged. This block only stabilizes
+   geometry across phones and notebook screens. */
+.tournament-types{grid-template-columns:1fr 1fr!important}
+.v1-room{display:grid;place-items:center}
+.v1-shell{max-width:480px;isolation:isolate}
+.v1-main-actions button{min-height:54px;touch-action:manipulation}
+.v1-presets button,.v1-timebank-btn{touch-action:manipulation}
+@media (min-width:900px){
+  .v1-room{background:radial-gradient(circle at 50% 42%,#171419 0,#08090b 58%,#030405 100%)}
+  .v1-shell{width:min(92vw,1040px);max-width:1040px;height:min(94dvh,820px);min-height:680px;border:1px solid rgba(255,255,255,.08);border-radius:26px;box-shadow:0 40px 100px #000;overflow:hidden}
+  .v1-top{border-radius:26px 26px 0 0}
+  .v1-table-stage{left:50%;width:min(68%,680px);transform:translateX(-50%)}
+  .v1-hero-strip,.v1-controls{left:50%;width:min(68%,680px);transform:translateX(-50%)}
+  .v1-history-drawer{left:16px;right:auto;width:250px}
+  .v1-tournament-panel{left:auto;right:16px;width:250px}
+}
+@media (max-width:390px),(max-height:700px){
+  .v1-main-actions button{min-height:48px}
+  .v1-context{font-size:8px}
+  .v1-presets button{min-width:45px}
+}
+@media (prefers-reduced-motion:reduce){
+  .v1-room *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
