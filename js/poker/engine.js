@@ -1,6 +1,7 @@
 
 import { createDeck, shuffle } from './deck.js?v=130';
 import { PokerEventBus } from './eventBus.js?v=200';
+import { decidePreflop, describeHand } from './preflopStrategy.js?v=300';
 
 const RANK={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -68,6 +69,7 @@ export class HoldemDemo {
     players,heroNick,stackBB=100,smallBlind=50,bigBlind=100,
     blindSchedule=null,levelSeconds=300,bigBlindAnte=true,
     botDelayMs=700,eventPaceMs=180,dealPaceMs=90,boardPaceMs=320,sessionSeconds=600,testMode=false,
+    rng=Math.random,
     onChange,onHeroDecision,onHandEnd,onTournamentEnd
   }){
     this.heroNick=heroNick;
@@ -79,6 +81,7 @@ export class HoldemDemo {
     this.dealPaceMs=dealPaceMs;
     this.boardPaceMs=boardPaceMs;
     this.testMode=!!testMode;
+    this.rng=typeof rng==='function'?rng:Math.random;
     this.bus=new PokerEventBus();
 
     const startingStack=Math.round(stackBB*bigBlind);
@@ -96,6 +99,7 @@ export class HoldemDemo {
     this.levelSeconds=levelSeconds;
     this.levelStartedAt=Date.now();this.level=0;
     this.button=0;this.handNo=0;this.pot=0;this.streetPot=0;this.board=[];this.street='waiting';
+    this.preflopRaiseCount=0;this.lastAggressorSeat=null;
     this.phase='waiting';this.currentBet=0;this.lastFullRaise=bigBlind;
     this.currentActorSeat=null;this.currentActorNick=null;
     this.deck=[];this.log=[];this.handActions=[];this.sessionHands=[];this.eliminations=[];this.decisionStartedAt=0;
@@ -252,11 +256,15 @@ export class HoldemDemo {
     const toCall=Math.max(0,this.currentBet-player.bet);
     const maxTarget=player.bet+player.stack;
     const minTarget=this.currentBet===0?this.bb:this.currentBet+this.lastFullRaise;
+    const opponents=this.liveInHand().filter(p=>p.seat!==player.seat);
+    const cover=opponents.length?Math.max(...opponents.map(p=>p.stack+p.bet)):player.stack;
     return{
       toCall,canCheck:toCall===0,canRaise:raiseAllowed&&maxTarget>this.currentBet,
       minRaise:Math.min(maxTarget,minTarget),maxRaise:maxTarget,stack:player.stack,pot:this.pot,
       bb:this.bb,stackBB:player.stack/this.bb,potBB:this.pot/this.bb,toCallBB:toCall/this.bb,
-      position:player.position,currentBet:this.currentBet
+      position:player.position,currentBet:this.currentBet,currentBetBB:this.currentBet/this.bb,
+      effectiveStackBB:Math.min(player.stack+player.bet,cover)/this.bb,
+      preflopRaiseCount:this.preflopRaiseCount,lastAggressorSeat:this.lastAggressorSeat
     };
   }
 
@@ -266,8 +274,9 @@ export class HoldemDemo {
     if(this.sessionRemaining()<=0){this.finishTournament('time');return;}
 
     this.updateLevel();this.running=true;this.handNo++;
-    this.deck=shuffle(createDeck());this.board=[];this.pot=0;this.streetPot=0;this.street='preflop';this.phase='dealing';
+    this.deck=shuffle(createDeck(),this.rng);this.board=[];this.pot=0;this.streetPot=0;this.street='preflop';this.phase='dealing';
     this.handActions=[];this.log=[];this.currentBet=0;this.lastFullRaise=this.bb;
+    this.preflopRaiseCount=0;this.lastAggressorSeat=null;
     this.currentActorSeat=null;this.currentActorNick=null;
 
     this.players.forEach(p=>{
@@ -425,6 +434,7 @@ export class HoldemDemo {
         const size=player.bet-old;
         if(size>=this.lastFullRaise){this.lastFullRaise=size;fullRaise=true;}
         this.currentBet=player.bet;
+        if(this.street==='preflop'){this.preflopRaiseCount++;this.lastAggressorSeat=player.seat;}
       }
       this.event('PLAYER_ALLIN',{seat:player.seat,nick:player.nick,amount,bet:player.bet,stack:player.stack,pot:this.pot});
     }else if(type==='raise'){
@@ -439,6 +449,7 @@ export class HoldemDemo {
         const size=player.bet-old;
         if(size>=this.lastFullRaise){this.lastFullRaise=size;fullRaise=true;}
         this.currentBet=player.bet;
+        if(this.street==='preflop'){this.preflopRaiseCount++;this.lastAggressorSeat=player.seat;}
       }
       this.event('PLAYER_RAISED',{seat:player.seat,nick:player.nick,amount,bet:player.bet,stack:player.stack,pot:this.pot});
     }else throw new Error('UNKNOWN_ACTION_'+type);
@@ -446,12 +457,15 @@ export class HoldemDemo {
     this.handActions.push({
       handNo:this.handNo,street:this.street,player:player.nick,position:player.position,action:type,
       amountBB:amount/this.bb,toCallBB:legal.toCallBB,currentBetBB:legal.currentBet/this.bb,
+      effectiveStackBeforeBB:legal.effectiveStackBB,preflopRaiseCount:legal.preflopRaiseCount||0,
       potBeforeBB:(meta.potBefore||0)/this.bb,potAfterBB:this.pot/this.bb,
       potOdds:legal.toCall>0?legal.toCall/Math.max(1,(meta.potBefore||0)+legal.toCall):0,
       decisionMs:meta.decisionMs||0,playersInHand:this.liveInHand().length,
       effectiveStackBB:Math.min(...this.liveInHand().map(x=>x.stack+Math.max(0,this.currentBet-x.bet)))/this.bb,
       stackAfterBB:player.stack/this.bb,heroHole:this.hero()?this.hero().hole.slice():[],
       board:this.board.slice(),ts:Date.now()
+      ,decisionReason:action.reason||'',decisionConfidence:action.confidence!=null?action.confidence:null,
+      intentionalMistake:action.mistake||null
     });
     return{fullRaise};
   }
@@ -463,13 +477,13 @@ export class HoldemDemo {
 
   styleProfile(player){
     const key=(player.nick+' '+(player.style||'')).toLowerCase();
-    if(key.indexOf('nit')>=0)return{loose:-.13,agg:-.12,bluff:.03,call:-.10};
-    if(key.indexOf('bluff')>=0||key.indexOf('агро')>=0)return{loose:.08,agg:.18,bluff:.18,call:-.02};
-    if(key.indexOf('calling')>=0||key.indexOf('липк')>=0||key.indexOf('pohu')>=0)return{loose:.15,agg:-.10,bluff:.02,call:.18};
-    if(key.indexOf('minraise')>=0||key.indexOf('хаот')>=0)return{loose:.12,agg:.06,bluff:.10,call:.07};
-    if(key.indexOf('river')>=0||key.indexOf('дисцип')>=0)return{loose:-.04,agg:.02,bluff:.05,call:-.03};
-    if(key.indexOf('bubble')>=0||key.indexOf('icm')>=0)return{loose:.03,agg:.13,bluff:.12,call:-.05};
-    return{loose:0,agg:.05,bluff:.07,call:0};
+    if(key.indexOf('nit')>=0)return{archetype:'nit',loose:-.13,agg:-.12,bluff:.03,call:-.10,mistakeRate:.025};
+    if(key.indexOf('bluff')>=0||key.indexOf('агро')>=0)return{archetype:'aggro',loose:.08,agg:.18,bluff:.18,call:-.02,mistakeRate:.09};
+    if(key.indexOf('calling')>=0||key.indexOf('липк')>=0||key.indexOf('pohu')>=0)return{archetype:'calling',loose:.15,agg:-.10,bluff:.02,call:.18,mistakeRate:.14};
+    if(key.indexOf('minraise')>=0||key.indexOf('хаот')>=0)return{archetype:'chaotic',loose:.12,agg:.06,bluff:.10,call:.07,mistakeRate:.12};
+    if(key.indexOf('river')>=0||key.indexOf('дисцип')>=0)return{archetype:'disciplined',loose:-.04,agg:.02,bluff:.05,call:-.03,mistakeRate:.025};
+    if(key.indexOf('bubble')>=0||key.indexOf('icm')>=0)return{archetype:'aggro',loose:.03,agg:.13,bluff:.12,call:-.05,mistakeRate:.055};
+    return{archetype:'balanced',loose:0,agg:.05,bluff:.07,call:0,mistakeRate:.035};
   }
 
   postflopInfo(player){
@@ -502,12 +516,12 @@ export class HoldemDemo {
   }
 
   async botAction(player,legal){
-    if(!await this.pause(this.botDelayMs+Math.random()*this.botDelayMs*.45))return{type:legal.canCheck?'check':'fold'};
+    if(!await this.pause(this.botDelayMs+this.rng()*this.botDelayMs*.45))return{type:legal.canCheck?'check':'fold'};
     const profile=this.styleProfile(player),pos=this.positionFactor(player.position);
     const pressure=legal.toCall/Math.max(1,legal.pot+legal.toCall);
+    if(this.street==='preflop')return decidePreflop({hole:player.hole,position:player.position,legal,profile,rng:this.rng});
     let strength,draw=false;
-    if(this.street==='preflop')strength=this.preflopStrength(player.hole)+pos+profile.loose;
-    else{
+    {
       const info=this.postflopInfo(player);strength=info.strength;draw=info.flushDraw||info.oesd||info.gutshot;
     }
     strength=Math.max(0,Math.min(1,strength));
@@ -517,13 +531,13 @@ export class HoldemDemo {
     // Facing a bet: use pot odds, hand strength and archetype instead of auto-calling.
     if(legal.toCall>0){
       const callThreshold=Math.max(.16,pressure-profile.call);
-      if(!medium&&!draw&&strength<callThreshold&&Math.random()>bluffChance)return{type:'fold'};
-      if(legal.canRaise&&(monster||(good&&Math.random()<.20+profile.agg*.35))){
+      if(!medium&&!draw&&strength<callThreshold&&this.rng()>bluffChance)return{type:'fold'};
+      if(legal.canRaise&&(monster||(good&&this.rng()<.20+profile.agg*.35))){
         if(legal.stackBB<14||monster&&legal.stackBB<24)return{type:'allin'};
-        return{type:'raise',amount:this.chooseRaiseTarget(legal,this.street==='preflop'?.65:(strength>.75?.75:.55))};
+        return{type:'raise',amount:this.chooseRaiseTarget(legal,this.street==='preflop' ? .65 : (strength>.75 ? .75 : .55))};
       }
       if(strength+profile.call>=pressure*.90||draw)return{type:'call'};
-      return Math.random()<.18+profile.call?{type:'call'}:{type:'fold'};
+      return this.rng()<.18+profile.call?{type:'call'}:{type:'fold'};
     }
 
     // Checked to: value bet strong hands, stab some weak ranges, check medium showdown value.
@@ -531,9 +545,9 @@ export class HoldemDemo {
       let betFreq=.08+Math.max(0,profile.agg)*.45+Math.max(0,pos)*.6;
       if(monster)betFreq=.88;else if(good)betFreq=.62;else if(draw)betFreq=.48;
       else if(strength<.28)betFreq+=bluffChance;
-      if(Math.random()<Math.min(.92,betFreq)){
+      if(this.rng()<Math.min(.92,betFreq)){
         if(monster&&legal.stackBB<18)return{type:'allin'};
-        const frac=monster?.72:(draw?.52:(strength<.30?.34:.45));
+        const frac=monster ? .72 : (draw ? .52 : (strength<.30 ? .34 : .45));
         return{type:'raise',amount:this.chooseRaiseTarget(legal,frac)};
       }
     }
@@ -541,10 +555,7 @@ export class HoldemDemo {
   }
 
   preflopStrength(hole){
-    if(!hole||hole.length<2)return.5;
-    const a=RANK[hole[0][0]],b=RANK[hole[1][0]],pair=a===b,suited=hole[0][1]===hole[1][1],gap=Math.abs(a-b);
-    let v=(a+b)/30;if(pair)v+=.25;if(suited)v+=.07;if(gap>5)v-=.08;
-    return Math.max(0,Math.min(1,v));
+    return describeHand(hole).strength;
   }
 
   buildSidePots(contenders){
@@ -590,12 +601,15 @@ export class HoldemDemo {
       if(!winners.length)continue;
       const share=Math.floor(pot.size/winners.length);let remainder=pot.size-share*winners.length;
       winners.forEach(w=>w.stack+=share);
-      let cursor=this.button;
-      while(remainder>0){
-        cursor=this.nextLive(cursor);
-        const w=winners.find(x=>x.seat===cursor);
-        if(w){w.stack++;remainder--;}
-      }
+      // Odd chips go clockwise from the button among the actual winners.
+      // Do not use nextLive(): before payout an all-in winner can have stack=0,
+      // so nextLive() would skip that winner and could loop forever.
+      const oddChipOrder=winners.slice().sort((a,b)=>{
+        const da=(a.seat-this.button+this.players.length)%this.players.length||this.players.length;
+        const db=(b.seat-this.button+this.players.length)%this.players.length||this.players.length;
+        return da-db;
+      });
+      for(let i=0;i<remainder;i++)oddChipOrder[i%oddChipOrder.length].stack++;
       awards.push({amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best)});
       this.event('POT_AWARDED',{amount:pot.size,winners:winners.map(w=>w.nick),label:rankLabel(best)});
     }

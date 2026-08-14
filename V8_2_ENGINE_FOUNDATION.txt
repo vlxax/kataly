@@ -1,0 +1,16 @@
+KATALY V8.2 — TOURNAMENT ENGINE FOUNDATION
+
+FIXED
+- Odd-chip payout no longer uses nextLive().
+- All-in winners with zero pre-award stacks can receive remainder chips.
+- Split-pot remainder order is clockwise from the button.
+
+ADDED
+- Tournament edge-case tests: odd split, nested all-ins, simultaneous busts and heads-up positions.
+- Injectable RNG for deterministic deck shuffling and bot decisions.
+- Seed replay regression test.
+- Maintained release suite now contains 12 test files.
+
+WHY THIS COMES BEFORE SMARTER BOTS
+- Every unusual bot decision and deal can now be reproduced.
+- Rare all-in payout failures are protected before aggression/range complexity increases.

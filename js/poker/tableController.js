@@ -1,6 +1,6 @@
-import { HoldemDemo } from './engine.js?v=200';
+import { HoldemDemo } from './engine.js?v=300';
 import { TableView } from './tableView.js?v=200';
-import { analyzeSession } from '../analytics/sessionAnalysis.js?v=130';
+import { analyzeSession } from '../analytics/sessionAnalysis.js?v=300';
 
 export class TableController{
   constructor({root,lobby,heroNick,onExit,onSessionEnd}){
@@ -153,10 +153,10 @@ export class TableController{
 
   payoutFor(place){
     const seats=(this.lobby.players&&this.lobby.players.length)||this.lobby.seats||6;
-    const pool=(Number(this.lobby.buyIn)||0)*seats*(this.lobby.mode==='bounty'?.7:1);
+    const pool=(Number(this.lobby.buyIn)||0)*seats*(this.lobby.mode==='bounty' ? .7 : 1);
     let pct=0;
-    if(seats>=6)pct=place===1?.50:place===2?.30:place===3?.20:0;
-    else if(seats>=4)pct=place===1?.65:place===2?.35:0;
+    if(seats>=6)pct=place===1 ? .50 : (place===2 ? .30 : (place===3 ? .20 : 0));
+    else if(seats>=4)pct=place===1 ? .65 : (place===2 ? .35 : 0);
     else pct=place===1?1:0;
     return Math.round(pool*pct);
   }

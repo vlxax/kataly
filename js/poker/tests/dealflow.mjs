@@ -4,7 +4,7 @@ const players=Array.from({length:6},(_,i)=>({nick:i===0?'Hero':'B'+i,type:'bot'}
 let decisions=0,hands=0,phases=[];
 const e=new HoldemDemo({
  players,heroNick:'Hero',stackBB:30,smallBlind:50,bigBlind:100,
- levelSeconds:999999,botDelayMs:0,dealDelayMs:0,
+ levelSeconds:999999,botDelayMs:0,eventPaceMs:0,dealPaceMs:0,boardPaceMs:0,testMode:true,
  onChange:s=>phases.push(s.phase),
  onHeroDecision:(legal,res)=>{decisions++;res({type:legal.canCheck?'check':'call'});},
  onHandEnd:()=>hands++

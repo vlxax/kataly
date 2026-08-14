@@ -1,5 +1,5 @@
-import { analyzeSession } from './analytics/sessionAnalysis.js?v=130';
-import { mountPokerTable } from './tableUI.js?v=200';
+import { analyzeSession } from './analytics/sessionAnalysis.js?v=300';
+import { mountPokerTable } from './tableUI.js?v=300';
 
 import { state, saveState } from './state.js?v=114';
 import { makeBots } from './bots/botEngine.js?v=114';
@@ -274,7 +274,7 @@ function showSessionResult(session){
     <div class="analysis-teaser">
       <div class="eyebrow">POKER BRAIN</div>
       <b>Оценка сессии: ${(session.analysis && session.analysis.overall) || 0}/100</b>
-      <span>${(session.analysis && session.analysis.errors && session.analysis.errors.length) || 0} ошибок · ${(session.analysis && session.analysis.warnings && session.analysis.warnings.length) || 0} спорных решений · ${(session.analysis && session.analysis.stats && session.analysis.stats.decisions) || 0} решений записано.</span>
+      <span>${(session.analysis && session.analysis.errors && session.analysis.errors.length) || 0} вероятных ошибок · ${(session.analysis && session.analysis.warnings && session.analysis.warnings.length) || 0} спорных решений · ${(session.analysis && session.analysis.stats && session.analysis.stats.decisions) || 0} решений записано.</span>
     </div>
 
     <button class="btn btn-primary" id="toHistory" style="width:100%">ПОСМОТРЕТЬ СЕССИЮ</button>
@@ -372,7 +372,7 @@ function showSessionDetails(id){
       <div><span>Сайзинги</span><b>${a.sizing!=null?a.sizing:'—'}</b></div>
       <div><span>Дисциплина</span><b>${a.discipline}</b></div>
     </div>
-    <p class="tiny-note">* Пока это учебные метрики прототипа, рассчитанные по записанным решениям Hero, а не полноценный HUD.</p>
+    <p class="tiny-note">* Учебные метрики по записанным решениям Hero. Разбор эвристический: это не GTO-solver и не полноценный HUD.</p>
     <button class="btn btn-primary open-analysis" style="width:100%">РАЗОБРАТЬ ${a.errors.length+a.warnings.length} РЕШЕНИЙ</button>
     <button class="btn btn-secondary close-detail" style="width:100%;margin-top:8px">ЗАКРЫТЬ</button>
   </div>`;
@@ -389,8 +389,10 @@ function showAnalysisStub(id){
     <div class="sheet-handle"></div>
     <div class="analysis-head">
       <div><div class="eyebrow">POKER BRAIN · РАЗБОР</div><h2>${a.overall}/100</h2></div>
-      <div class="analysis-count"><b>${a.errors.length}</b><span>ошибок</span></div>
+      <div class="analysis-count"><b>${a.errors.length}</b><span>вероятных ошибок</span></div>
     </div>
+
+    <p class="tiny-note">${a.method&&a.method.notice||'Эвристический разбор: выводы показывают сигнал для проверки, а не абсолютную GTO-истину.'}</p>
 
     <div class="brain-score-grid compact">
       <div><span>Префлоп</span><b>${a.preflop!=null?a.preflop:'—'}</b></div>
@@ -406,7 +408,7 @@ function showAnalysisStub(id){
           <div class="issue-top"><span>HAND #${x.handNo} · ${String(x.street).toUpperCase()}</span><b>${x.score}/100</b></div>
           <h3>${x.title}</h3>
           <p>${x.reason}</p>
-          <small>${x.action.toUpperCase()} · банк после действия ${Math.round(x.potAfterBB*10)/10} BB</small>
+          <small>${x.action.toUpperCase()} · уверенность ${x.confidenceLabel||'ОГРАНИЧЕННАЯ'} · банк после действия ${Math.round(x.potAfterBB*10)/10} BB</small>
         </button>`).join(''):`<div class="card empty">Критичных ошибок в этой короткой сессии не найдено.</div>`}
     </div>
 
@@ -434,7 +436,7 @@ function showHandBreakdown(x){
     <h2>${x.title}</h2>
     <div class="mini-cards">${(h.heroHole||[]).map(c=>`<span>${c}</span>`).join('')} <i>·</i> ${(h.board||[]).map(c=>`<span>${c}</span>`).join('')}</div>
     <div class="decision-verdict ${x.severity}">
-      <b>${x.score}/100</b><span>${x.reason}</span>
+      <b>${x.score}/100</b><span>${x.reason}<br><small>Уверенность оценки: ${x.confidenceLabel||'ОГРАНИЧЕННАЯ'}</small></span>
     </div>
     <div class="hand-line">
       ${(h.actions||[]).map(a=>`<div class="${a.player===state.nick?'hero-line':''}"><span>${String(a.street).toUpperCase()} · ${a.player}</span><b>${a.action.toUpperCase()}${a.amountBB?' '+Math.round(a.amountBB*10)/10+' BB':''}</b></div>`).join('')}

@@ -7,7 +7,7 @@ const players=[
 let heroDecisions=0, hands=0;
 const e=new HoldemDemo({
  players,heroNick:'Hero',stackBB:50,smallBlind:50,bigBlind:100,
- levelSeconds:999999,botDelayMs:0,
+ levelSeconds:999999,botDelayMs:0,testMode:true,
  onHeroDecision:(legal,res)=>{
    heroDecisions++;
    if(legal.canCheck)res({type:'check'});

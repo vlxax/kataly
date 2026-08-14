@@ -19,8 +19,8 @@ const showError=(label,err)=>{
 
 try{
   const s=document.getElementById('bootStatus');if(s)s.textContent='Загружаю турнирный стол…';
-  await import('./js/pacing.js?v=next1');
-  await import('./js/app.js?v=next1');
+  await import('./js/pacing.js?v=next3');
+  await import('./js/app.js?v=next3');
 }catch(e){
   showError('Запуск приложения',e);
 }

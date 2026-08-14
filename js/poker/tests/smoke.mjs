@@ -21,6 +21,10 @@ const engine = new HoldemDemo({
   bigBlind:100,
   levelSeconds:999999,
   botDelayMs:0,
+  eventPaceMs:0,
+  dealPaceMs:0,
+  boardPaceMs:0,
+  testMode:true,
   onHeroDecision:(legal, resolve) => {
     decisions++;
     resolve({type:legal.canCheck ? 'check' : 'call'});

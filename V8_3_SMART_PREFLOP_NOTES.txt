@@ -1,0 +1,27 @@
+KATALY V8.3 — SMART PREFLOP + HONEST POKER BRAIN
+
+SMART PREFLOP
+- Position-aware opening thresholds: UTG through BTN/SB/BB.
+- Context-aware responses: unopened, open, 3-bet and 4-bet+.
+- Effective-stack-aware decisions.
+- Push/fold branch at 12 BB and below.
+- Value 3-bets, short-stack reshoves and persona-specific marginal mistakes.
+- Every bot decision can store a readable reason and confidence.
+
+HUMAN-LIKE PACING
+- Decision timing uses the engine RNG and remains reproducible.
+- 3-bet/4-bet, river, high-pressure and shallow-stack spots receive more thinking time.
+- Additional timing profiles for PohuiCall and BubbleTerror.
+
+POKER BRAIN
+- confirmed_error: verifiable protocol error.
+- likely_error: strong heuristic signal, not solver truth.
+- questionable: mixed/exploit line requiring review.
+- standard: no strong issue detected.
+- Every verdict includes confidence: limited, medium or high.
+- UI explicitly says the current analysis is heuristic, not GTO solver output.
+
+QA
+- 14 maintained test files pass.
+- Smart preflop and Poker Brain confidence have dedicated regression tests.
+- Ambiguous Safari ternaries removed from the production path.

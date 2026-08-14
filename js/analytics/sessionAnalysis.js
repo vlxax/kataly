@@ -1,33 +1,37 @@
 
+import {describeHand} from '../poker/preflopStrategy.js?v=300';
+
 const RV={2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,T:10,J:11,Q:12,K:13,A:14};
 
 function heroActions(hands,heroNick){
   return [].concat.apply([], hands.map(function(h){return h.actions.filter(function(a){return a.player===heroNick}).map(function(a){return Object.assign({},a,{hand:h})})}));
 }
 function preflopPower(cards=[]){
-  if(cards.length<2)return .5;
-  const a=RV[cards[0][0]],b=RV[cards[1][0]],pair=a===b,suited=cards[0][1]===cards[1][1];
-  return Math.max(0,Math.min(1,(a+b)/30+(pair ? 0.25 : 0)+(suited ? 0.07 : 0)-(Math.abs(a-b) > 5 ? 0.08 : 0)));
+  return describeHand(cards).strength;
 }
 function classify(a){
-  let severity='good', score=86, title='Нормальное решение', reason='Линия выглядит логично для текущего банка и давления.';
+  let severity='good',verdict='standard',confidence=.62,score=86,title='Стандартное решение',reason='По доступным данным линия выглядит логично для текущего банка и давления.';
   const pressure=a.toCallBB/Math.max(1,(a.stackAfterBB||0)+a.toCallBB);
   const pwr=preflopPower(a.heroHole);
+  const hand=describeHand(a.heroHole);
+  const context=a.preflopRaiseCount===0?'неоткрытый банк':a.preflopRaiseCount===1?'против открытия':a.preflopRaiseCount===2?'против 3-бета':'против 4-бета+';
 
   if(a.street==='preflop'){
-    if(a.action==='call' && pwr<.36 && a.toCallBB>=2){severity='error';score=38;title='Лишний префлоп-колл';reason='Слабая стартовая рука продолжила против заметного рейза. Это раздувает VPIP и создаёт сложные постфлоп-споты.'}
-    else if(a.action==='fold' && pwr>.78 && a.toCallBB<=4){severity='error';score=42;title='Слишком тайтовый фолд';reason='Сильная стартовая рука была выброшена против умеренного давления.'}
-    else if(a.action==='raise' && pwr<.30){severity='warning';score=58;title='Слишком широкий рейз';reason='Агрессия сама по себе хороша, но эта комбинация слишком слаба для частого разгона банка.'}
-    else if(a.action==='call' && pwr>.74){severity='warning';score=66;title='Пассивно с сильной рукой';reason='Сильную часть диапазона иногда стоит защищать рейзом, а не только коллом.'}
+    if(a.action==='call' && pwr<.34 && a.toCallBB>=2){severity='error';verdict='likely_error';confidence=.82;score=38;title='Вероятная ошибка: широкий префлоп-колл';reason=`${hand.code} продолжила ${context} за ${Math.round(a.toCallBB*10)/10} BB. Без специальных ридсов такая линия часто создаёт минусовые постфлоп-споты.`}
+    else if(a.action==='fold' && pwr>.84 && a.toCallBB<=4){severity='error';verdict='likely_error';confidence=.86;score=42;title='Вероятная ошибка: слишком тайтовый фолд';reason=`${hand.code} относится к сильной части диапазона, а цена продолжения была умеренной. Точный вывод всё ещё зависит от экшена и диапазона соперника.`}
+    else if((a.action==='raise'||a.action==='allin') && pwr<.32){severity='warning';verdict='questionable';confidence=.60;score=58;title='Спорное решение: очень широкая агрессия';reason=`${hand.code} выглядит слабой для частого рейза (${context}, ${a.position||'позиция не записана'}). Это может быть эксплойтом, поэтому решение не помечено как доказанная ошибка.`}
+    else if(a.action==='call' && pwr>.78){severity='warning';verdict='questionable';confidence=.58;score=66;title='Спорное решение: пассивно с сильной рукой';reason=`${hand.code} часто может играть агрессивнее. Колл допустим как trap или mixed strategy, поэтому уверенность оценки ограничена.`}
+    else if((a.effectiveStackBeforeBB||a.effectiveStackBB||99)<=12&&a.action==='raise'){severity='warning';verdict='questionable';confidence=.72;score=61;title='Спорное решение: маленький рейз с коротким стеком';reason='При эффективном стеке около 12 BB стратегию обычно стоит сравнить с push/fold. Нужна дополнительная проверка диапазона и стадии турнира.'}
   } else {
     const pot=a.potBeforeBB||1;
     const sizing=a.amountBB/pot;
-    if(a.action==='call' && pressure>.38){severity='warning';score=59;title='Дорогой колл';reason='Ты вложила большую долю оставшегося стека. Такие коллы требуют более сильного диапазона и хороших пот-оддсов.'}
-    else if(a.action==='raise' && sizing>1.35){severity='warning';score=62;title='Очень крупный сайзинг';reason='Овербет может быть нормальным, но без сильной причины он делает диапазон дорогим и полярным.'}
-    else if(a.action==='raise' && sizing<.22){severity='warning';score=64;title='Слишком маленький сайзинг';reason='Ставка даёт соперникам слишком комфортную цену и часто недобирает вэлью.'}
-    else if(a.action==='fold' && a.toCallBB===0){severity='error';score=25;title='Невозможный фолд';reason='При нулевой цене решения должен быть check. Такой спот нужен для проверки логики движка.'}
+    if(a.action==='call' && pressure>.38){severity='warning';verdict='questionable';confidence=.57;score=59;title='Спорное решение: дорогой колл';reason='Вложена большая доля оставшегося стека. Без оценки диапазона и equity это сигнал для разбора, а не доказанная ошибка.'}
+    else if(a.action==='raise' && sizing>1.35){severity='warning';verdict='questionable';confidence=.52;score=62;title='Спорное решение: крупный овербет';reason='Овербет может быть правильным для полярного диапазона. Текущая эвристика лишь отмечает нестандартный размер.'}
+    else if(a.action==='raise' && sizing<.22){severity='warning';verdict='questionable';confidence=.63;score=64;title='Спорное решение: очень маленький сайзинг';reason='Ставка даёт соперникам хорошую цену, но может быть допустима на подходящей текстуре борда.'}
+    else if(a.action==='fold' && a.toCallBB===0){severity='error';verdict='confirmed_error';confidence=.99;score=25;title='Ошибка протокола: фолд при бесплатном check';reason='При нулевой цене доступен check. Это не стратегическая оценка, а проверяемая ошибка игровой логики.'}
   }
-  return {...a,severity,score,title,reason};
+  const confidenceLabel=confidence>=.85?'ВЫСОКАЯ':confidence>=.65?'СРЕДНЯЯ':'ОГРАНИЧЕННАЯ';
+  return {...a,severity,verdict,confidence,confidenceLabel,score,title,reason};
 }
 export function analyzeSession({hands=[],heroNick}){
   const actions=heroActions(hands,heroNick);
@@ -38,8 +42,8 @@ export function analyzeSession({hands=[],heroNick}){
   const preflop=avg(byStreet.preflop), post=avg([...byStreet.flop,...byStreet.turn,...byStreet.river]);
   const sizingActs=tagged.filter(a=>a.action==='raise');
   const sizing=avg(sizingActs);
-  const errors=tagged.filter(a=>a.severity==='error');
-  const warnings=tagged.filter(a=>a.severity==='warning');
+  const errors=tagged.filter(a=>a.verdict==='confirmed_error'||a.verdict==='likely_error');
+  const warnings=tagged.filter(a=>a.verdict==='questionable');
   const good=tagged.filter(a=>a.severity==='good');
   const overall=avg(tagged)||0;
 
@@ -68,6 +72,7 @@ export function analyzeSession({hands=[],heroNick}){
   return {
     overall,preflop,postflop:post,sizing,
     discipline:Math.max(0,Math.round(100-(errors.length*18+warnings.length*6))),
-    errors,warnings,good,tagged,stats,leaks
+    errors,warnings,good,tagged,stats,leaks,
+    method:{kind:'heuristic',solver:false,label:'Эвристический разбор',notice:'Это не GTO-solver: выводы зависят от полноты записанного контекста и показывают уверенность оценки.'}
   };
 }

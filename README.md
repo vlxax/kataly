@@ -1,3 +1,7 @@
+## KATALY V8 / V1.1.5 UI — текущая проверяемая сборка
+
+> Актуальный инженерный статус, найденные ограничения и порядок следующих работ находятся в `TECHNICAL_AUDIT.md`. Команда `npm test` запускает поддерживаемый release-набор тестов. Старые заметки ниже сохранены как история разработки.
+
 ## KATALY V1.1.5 — reference table layout
 
 - Reworked table presentation to match the approved mobile reference.

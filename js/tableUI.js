@@ -1,5 +1,5 @@
 
-import { TableController } from './poker/tableController.js?v=200';
+import { TableController } from './poker/tableController.js?v=300';
 
 export function mountPokerTable({lobby,heroNick,onExit,onSessionEnd}){
   const root=document.createElement('div');

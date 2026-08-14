@@ -8,8 +8,18 @@ function mk(){
     players:[
       {nick:'Hero',isHero:true},{nick:'A'},{nick:'B'},{nick:'C'},{nick:'D'},{nick:'E'}
     ],
-    stackBB:50, levelSeconds:99999, botDelayMs:0, eventPaceMs:0
+    stackBB:50, levelSeconds:99999, botDelayMs:0, eventPaceMs:0, testMode:true
   });
+}
+
+function setState(engine,{players,...state}){
+  if(players){
+    engine.players=players.map((next,i)=>Object.assign({
+      nick:`P${i}`,type:'bot',style:'',seat:i,stack:0,bet:0,totalBet:0,
+      folded:false,out:false,allIn:false,hole:[],position:'',lastAction:''
+    },next));
+  }
+  Object.assign(engine,state);
 }
 
 // EVENT integrity
@@ -25,7 +35,7 @@ function mk(){
 // MINRAISE: current bet 200, last full raise 100 => minimum target 300.
 {
   const g=mk();
-  g._testSetState({players:[
+  setState(g,{players:[
     {nick:'Hero',stack:4800,bet:200,totalBet:200},
     {nick:'A',stack:4800,bet:200,totalBet:200}
   ],currentBet:200,lastFullRaise:100,pot:400});
@@ -38,7 +48,7 @@ function mk(){
 // Current bet 1000, previous full raise increment 1000; player can only reach 1400.
 {
   const g=mk();
-  g._testSetState({players:[
+  setState(g,{players:[
     {nick:'Hero',stack:400,bet:1000,totalBet:1000},
     {nick:'A',stack:5000,bet:1000,totalBet:1000}
   ],currentBet:1000,lastFullRaise:1000,pot:2000});
@@ -53,7 +63,7 @@ function mk(){
 // FULL raise updates lastFullRaise.
 {
   const g=mk();
-  g._testSetState({players:[
+  setState(g,{players:[
     {nick:'Hero',stack:5000,bet:1000,totalBet:1000},
     {nick:'A',stack:5000,bet:1000,totalBet:1000}
   ],currentBet:1000,lastFullRaise:1000,pot:2000});
@@ -68,7 +78,7 @@ function mk(){
 // SIDE POTS: 100 / 60 / 200 BB-style units => 180 main, 80 side, 100 uncontested layer.
 {
   const g=mk();
-  g._testSetState({players:[
+  setState(g,{players:[
     {seat:0,nick:'Hero',stack:0,totalBet:100,allIn:true},
     {seat:1,nick:'A',stack:0,totalBet:60,allIn:true},
     {seat:2,nick:'B',stack:0,totalBet:200,allIn:true}
@@ -83,7 +93,7 @@ function mk(){
 // Folded dead money belongs in pot but folded player is never eligible.
 {
   const g=mk();
-  g._testSetState({players:[
+  setState(g,{players:[
     {seat:0,nick:'Hero',stack:0,totalBet:50,folded:true},
     {seat:1,nick:'A',stack:0,totalBet:50,allIn:true},
     {seat:2,nick:'B',stack:0,totalBet:50,allIn:true}

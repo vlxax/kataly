@@ -1,4 +1,4 @@
-KATALY REWORK V1
+KATALY V8.3 SMART PREFLOP
 Build date: 2026-08-14
-Scope: stable local tournament vertical slice
+Scope: position/stack/action-aware bots + confidence-aware Poker Brain
 Assets: preserved from supplied archive
